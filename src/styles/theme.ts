@@ -1,4 +1,5 @@
 import { createTheme, responsiveFontSizes, ThemeOptions } from '@mui/material/styles';
+import { ChipPropsColorOverrides } from '@mui/material/Chip';
 
 declare module '@mui/material/styles' {
   interface Palette {
@@ -10,6 +11,24 @@ declare module '@mui/material/styles' {
     important?: PaletteOptions['primary'];
   }
 }
+
+declare module "@mui/material/Chip" {
+  interface ChipPropsColorOverrides {
+    positive: true;
+    important: true;
+  }
+}
+
+export const getCustomColors = () => {
+  if (typeof window === 'undefined') return {};
+  return {
+    primary: localStorage.getItem('customPrimaryColor') || undefined,
+    secondary: localStorage.getItem('customSecondaryColor') || undefined,
+    positive: localStorage.getItem('customPositiveColor') || undefined,
+    important: localStorage.getItem('customImportantColor') || undefined,
+    error: localStorage.getItem('customErrorColor') || undefined,
+  };
+};
 
 const baseThemeOptions: ThemeOptions = {
   typography: {
@@ -26,15 +45,15 @@ const baseThemeOptions: ThemeOptions = {
   },
 };
 
-const lightThemeOptions: ThemeOptions = {
+export const lightThemeOptions: ThemeOptions = {
   ...baseThemeOptions,
   palette: {
     mode: 'light',
     primary: {
-      main: '#3f51b5', // Main Blue
+      main: getCustomColors().primary || '#3f51b5', // Main Blue
     },
     secondary: {
-      main: '#673ab7', // Main Purple
+      main: getCustomColors().secondary || '#673ab7', // Main Purple
     },
     background: {
       default: '#f4f6f8',
@@ -46,28 +65,28 @@ const lightThemeOptions: ThemeOptions = {
     },
     // Custom Semantic Colors
     positive: {
-      main: '#1976d2', // Blue
+      main: getCustomColors().positive || '#1976d2', // Blue
       contrastText: '#ffffff',
     },
     important: {
-      main: '#ffc107', // Yellow
+      main: getCustomColors().important || '#ffc107', // Yellow
       contrastText: '#000000',
     },
     error: {
-      main: '#d32f2f', // Overriding default error with a magenta-like red for better visibility
+      main: getCustomColors().error || '#d32f2f', // Overriding default error with a magenta-like red for better visibility
     },
   },
 };
 
-const darkThemeOptions: ThemeOptions = {
+export const darkThemeOptions: ThemeOptions = {
   ...baseThemeOptions,
   palette: {
     mode: 'dark',
     primary: {
-      main: '#7986cb', // Lighter Blue for dark mode
+      main: getCustomColors().primary || '#7986cb', // Lighter Blue for dark mode
     },
     secondary: {
-      main: '#9575cd', // Lighter Purple for dark mode
+      main: getCustomColors().secondary || '#9575cd', // Lighter Purple for dark mode
     },
     background: {
       default: '#121212',
@@ -79,15 +98,15 @@ const darkThemeOptions: ThemeOptions = {
     },
     // Custom Semantic Colors
     positive: {
-      main: '#42a5f5', // Lighter Blue
+      main: getCustomColors().positive || '#42a5f5', // Lighter Blue
       contrastText: '#000000',
     },
     important: {
-      main: '#ffca28', // Lighter Yellow
+      main: getCustomColors().important || '#ffca28', // Lighter Yellow
       contrastText: '#000000',
     },
     error: {
-      main: '#f44336', // Magenta-like Red
+      main: getCustomColors().error || '#f44336', // Magenta-like Red
     },
   },
 };

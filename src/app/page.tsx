@@ -4,192 +4,132 @@ import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Box,
+  AppBar,
+  Toolbar,
+  Typography,
+  Button,
+  Tabs,
+  Tab,
+  Fab,
+  Menu,
+  MenuItem,
+  useTheme,
+  CircularProgress,
   Drawer,
   List,
   ListItem,
   ListItemButton,
   ListItemText,
-  Typography,
-  CircularProgress,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Paper,
-  Modal,
-  Card,
-  CardContent,
-  CardHeader,
   IconButton,
-  Divider,
-  Chip,
-  Alert,
-  Container,
-  Skeleton,
-  useTheme,
+  Paper,
 } from '@mui/material';
+import SettingsIcon from '@mui/icons-material/Settings';
+import AddIcon from '@mui/icons-material/Add';
 import CloseIcon from '@mui/icons-material/Close';
-import InboxIcon from '@mui/icons-material/Inbox';
-import axios from 'axios';
+import { usePlatformManager, Platform } from '../hooks/usePlatformManager';
+import JiraPlatformView from '../components/JiraPlatformView';
+import IssueDetailView from '../components/IssueDetailView';
+import JiraTeamView from '../components/JiraTeamView';
+import JiraKanbanView from '../components/JiraKanbanView';
+import JiraIssueSearchView from '../components/JiraIssueSearchView';
 
 const drawerWidth = 280;
 
-// Type definitions
-interface Project {
-  id: string;
-  key: string;
-  name: string;
+interface ContentTab {
+  id: string; // Unique ID for the tab (e.g., platformId-type-key)
+  type: 'jira-project-list' | 'jira-issue-detail' | 'jira-team' | 'jira-kanban' | 'jira-issue-search'; // Type of content
+  title: string;
+  platformId: string;
+  data?: any; // Data specific to the tab (e.g., issueKey for issue detail)
 }
 
-interface Issue {
-  id: string;
-  key: string;
-  fields: {
-    summary: string;
-    issuetype: { name: string; iconUrl: string };
-    reporter: { displayName: string };
-    status: { name: string };
-  };
-}
-
-interface IssueDetail extends Issue {
-  renderedFields: {
-    description: string;
-  };
-  changelog: {
-    histories: any[];
-  };
-}
-
-const modalStyle = {
-  position: 'absolute' as 'absolute',
-  top: '50%',
-  left: '50%',
-  transform: 'translate(-50%, -50%)',
-  width: { xs: '90vw', md: '70vw' },
-  maxHeight: '85vh',
-  overflowY: 'auto',
-  bgcolor: 'background.paper',
-  boxShadow: 24,
-  borderRadius: 2,
-};
-
-export default function JiraPage() {
+export default function HomePage() {
   const router = useRouter();
   const theme = useTheme();
-  const [authChecked, setAuthChecked] = useState(false);
+  const { platforms, loading: platformsLoading } = usePlatformManager();
 
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [issues, setIssues] = useState<Issue[]>([]);
-  const [selectedProject, setSelectedProject] = useState<string | null>(null);
-  const [loadingProjects, setLoadingProjects] = useState(true);
-  const [loadingIssues, setLoadingIssues] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [selectedPlatformId, setSelectedPlatformId] = useState<string | null>(null);
+  const [contentTabs, setContentTabs] = useState<ContentTab[]>([]);
+  const [activeContentTabId, setActiveContentTabId] = useState<string | null>(null);
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null); // For FAB menu
 
-  const [selectedIssue, setSelectedIssue] = useState<IssueDetail | null>(null);
-  const [isModalOpen, setModalOpen] = useState(false);
-  const [loadingModal, setLoadingModal] = useState(false);
-
-  const handleProjectClick = useCallback(async (projectKey: string) => {
-    setSelectedProject(projectKey);
-    localStorage.setItem('lastSelectedProject', projectKey);
-    setLoadingIssues(true);
-    setIssues([]);
-    setError(null);
-
-    const jiraUrl = localStorage.getItem('jiraUrl');
-    const username = localStorage.getItem('username');
-    const apiToken = localStorage.getItem('apiToken');
-    const token = Buffer.from(`${username}:${apiToken}`).toString('base64');
-
-    try {
-      const response = await axios.get(
-        `/api/jira/issues?projectKey=${projectKey}`,
-        {
-          headers: {
-            Authorization: `Basic ${token}`,
-            'X-Jira-Url': jiraUrl,
-          },
-        }
-      );
-      setIssues(response.data.issues);
-    } catch (err) {
-      setError(`'${projectKey}' 프로젝트의 이슈를 불러오는 데 실패했습니다.`);
-    }
-    setLoadingIssues(false);
-  }, []);
-
+  // Initial routing logic and platform selection
   useEffect(() => {
-    const jiraUrl = localStorage.getItem('jiraUrl');
-    const username = localStorage.getItem('username');
-    const apiToken = localStorage.getItem('apiToken');
-
-    if (!jiraUrl || !username || !apiToken) {
-      router.push('/settings');
-      return;
-    }
-
-    setAuthChecked(true);
-
-    const fetchProjects = async () => {
-      const token = Buffer.from(`${username}:${apiToken}`).toString('base64');
-
-      try {
-        const response = await axios.get('/api/jira/projects', {
-          headers: {
-            Authorization: `Basic ${token}`,
-            'X-Jira-Url': jiraUrl,
-          },
-        });
-        const fetchedProjects: Project[] = response.data;
-        setProjects(fetchedProjects);
-
-        const lastSelectedProject = localStorage.getItem('lastSelectedProject');
-        if (lastSelectedProject && fetchedProjects.some(p => p.key === lastSelectedProject)) {
-          handleProjectClick(lastSelectedProject);
-        }
-
-      } catch (err) {
-        setError('프로젝트를 불러오는 데 실패했습니다.');
+    if (!platformsLoading) {
+      if (platforms.length === 0) {
+        router.push('/welcome');
+      } else if (!selectedPlatformId) {
+        setSelectedPlatformId(platforms[0].id);
       }
-      setLoadingProjects(false);
-    };
-
-    fetchProjects();
-  }, [router, handleProjectClick]);
-
-  const handleIssueClick = async (issueKey: string) => {
-    setModalOpen(true);
-    setLoadingModal(true);
-
-    const jiraUrl = localStorage.getItem('jiraUrl');
-    const username = localStorage.getItem('username');
-    const apiToken = localStorage.getItem('apiToken');
-    const token = Buffer.from(`${username}:${apiToken}`).toString('base64');
-
-    try {
-      const response = await axios.get(`/api/jira/issue/${issueKey}`,
-      {
-        headers: {
-          Authorization: `Basic ${token}`,
-          'X-Jira-Url': jiraUrl,
-        },
-      });
-      setSelectedIssue(response.data);
-    } catch (err) {
-      setError(`이슈 ${issueKey} 정보를 가져오는 데 실패했습니다.`);
     }
-    setLoadingModal(false);
+  }, [platformsLoading, platforms, router, selectedPlatformId]);
+
+  // Handle opening a new content tab
+  const handleOpenContentTab = useCallback((type: ContentTab['type'], key: string, platform: Platform, title: string) => {
+    const newTabId = `${platform.id}-${type}-${key}`;
+    const existingTab = contentTabs.find(tab => tab.id === newTabId);
+
+    if (existingTab) {
+      setActiveContentTabId(newTabId);
+    } else {
+      const newTab: ContentTab = {
+        id: newTabId,
+        type,
+        title,
+        platformId: platform.id,
+        data: { key }, // Store key for issue detail
+      };
+      setContentTabs(prevTabs => [...prevTabs, newTab]);
+      setActiveContentTabId(newTabId);
+    }
+  }, [contentTabs]);
+
+  // Handle closing a content tab
+  const handleCloseContentTab = useCallback((tabId: string) => {
+    setContentTabs(prevTabs => {
+      const tabIndex = prevTabs.findIndex(tab => tab.id === tabId);
+      if (tabIndex === -1) return prevTabs;
+
+      const updatedTabs = prevTabs.filter(tab => tab.id !== tabId);
+
+      if (activeContentTabId === tabId) {
+        // If the closed tab was active, activate an adjacent one
+        if (updatedTabs.length > 0) {
+          const newActiveIndex = tabIndex === 0 ? 0 : tabIndex - 1;
+          setActiveContentTabId(updatedTabs[newActiveIndex].id);
+        } else {
+          setActiveContentTabId(null);
+        }
+      }
+      return updatedTabs;
+    });
+  }, [activeContentTabId]);
+
+  const handlePlatformTabChange = (event: React.SyntheticEvent, newValue: string) => {
+    setSelectedPlatformId(newValue);
+    // When platform changes, activate the first content tab of that platform or null
+    const firstTabOfNewPlatform = contentTabs.find(tab => tab.platformId === newValue);
+    setActiveContentTabId(firstTabOfNewPlatform ? firstTabOfNewPlatform.id : null);
   };
 
-  const handleCloseModal = () => {
-    setModalOpen(false);
-    setSelectedIssue(null);
+  const handleContentTabChange = (event: React.SyntheticEvent, newValue: string) => {
+    setActiveContentTabId(newValue);
   };
 
-  if (!authChecked) {
+  const handleFabClick = (event: React.MouseEvent<HTMLElement>) => {
+    setAnchorEl(event.currentTarget);
+  };
+
+  const handleFabMenuClose = () => {
+    setAnchorEl(null);
+  };
+
+  const handleSettingsClick = () => {
+    router.push('/settings');
+    handleFabMenuClose();
+  };
+
+  if (platformsLoading) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
         <CircularProgress />
@@ -197,176 +137,181 @@ export default function JiraPage() {
     );
   }
 
+  if (platforms.length === 0) {
+    return null; // Redirect handled by useEffect
+  }
+
+  const currentPlatform = platforms.find(p => p.id === selectedPlatformId);
+
   return (
     <Box sx={{ display: 'flex', height: '100vh', bgcolor: 'background.default' }}>
-      <Drawer
-        variant="permanent"
-        sx={{
-          width: drawerWidth,
-          flexShrink: 0,
-          [`& .MuiDrawer-paper`]: { 
-            width: drawerWidth, 
-            boxSizing: 'border-box',
-            bgcolor: 'background.paper',
-            borderRight: `1px solid ${theme.palette.divider}`
-          },
-        }}
-      >
-        <Box sx={{ p: 2, borderBottom: `1px solid ${theme.palette.divider}` }}>
-          <Typography variant="h6" component="div" sx={{ fontWeight: 'bold', color: 'primary.main' }}>
-            Tasker - Jira
+      {/* App Bar for Platform Tabs */}
+      <AppBar position="fixed" sx={{ zIndex: (theme) => theme.zIndex.drawer + 1, bgcolor: 'background.paper', borderBottom: `1px solid ${theme.palette.divider}` }}>
+        <Toolbar>
+          <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1, color: 'primary.main', fontWeight: 'bold' }}>
+            Tasker
           </Typography>
-        </Box>
-        <Box sx={{ overflow: 'auto' }}>
-          {loadingProjects ? (
-            <Box sx={{ p: 2 }}>
-              {[...Array(5)].map((_, index) => <Skeleton key={index} height={40} sx={{ my: 1 }}/>)}
-            </Box>
-          ) : (
-            <List>
-              {projects.map((project) => (
-                <ListItem key={project.id} disablePadding>
-                  <ListItemButton
-                    selected={selectedProject === project.key}
-                    onClick={() => handleProjectClick(project.key)}
-                    sx={{ 
-                      m: 1, borderRadius: 1,
-                      '&.Mui-selected': {
-                        bgcolor: 'primary.main',
-                        color: 'primary.contrastText',
-                        ':hover': {
-                          bgcolor: 'primary.dark'
-                        }
-                      }
-                    }}
-                  >
-                    <ListItemText primary={project.name} secondary={project.key} primaryTypographyProps={{ fontWeight: 'medium' }} />
-                  </ListItemButton>
-                </ListItem>
-              ))}
-            </List>
-          )}
-        </Box>
-      </Drawer>
-      <Container maxWidth="xl" component="main" sx={{ flexGrow: 1, p: 3, overflowY: 'auto' }}>
-        {selectedProject ? (
-          <>
-            <Typography variant="h4" component="h1" gutterBottom sx={{ fontWeight: 'bold' }}>
-              {selectedProject} 이슈 목록
-            </Typography>
-            {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
-            <Paper sx={{ p: 2, mt: 2 }}>
-              <TableContainer>
-                <Table sx={{ minWidth: 650 }} aria-label="issues table">
-                  <TableHead>
-                    <TableRow sx={{ bgcolor: 'action.hover' }}>
-                      <TableCell sx={{ fontWeight: 'bold' }}>키</TableCell>
-                      <TableCell sx={{ fontWeight: 'bold' }}>요약</TableCell>
-                      <TableCell sx={{ fontWeight: 'bold' }}>타입</TableCell>
-                      <TableCell sx={{ fontWeight: 'bold' }}>상태</TableCell>
-                      <TableCell sx={{ fontWeight: 'bold' }}>보고자</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {loadingIssues ? (
-                      [...Array(10)].map((_, index) => (
-                        <TableRow key={index}>
-                          <TableCell><Skeleton /></TableCell>
-                          <TableCell><Skeleton /></TableCell>
-                          <TableCell><Skeleton /></TableCell>
-                          <TableCell><Skeleton /></TableCell>
-                          <TableCell><Skeleton /></TableCell>
-                        </TableRow>
-                      ))
-                    ) : (
-                      issues.map((issue) => (
-                        <TableRow
-                          key={issue.key}
-                          onClick={() => handleIssueClick(issue.key)}
-                          sx={{ cursor: 'pointer', '&:hover': { backgroundColor: 'action.hover' } }}
-                        >
-                          <TableCell sx={{ color: 'secondary.main', fontWeight: 'medium' }}>{issue.key}</TableCell>
-                          <TableCell>{issue.fields.summary}</TableCell>
-                          <TableCell>
-                            <Chip 
-                              avatar={<img src={issue.fields.issuetype.iconUrl} alt={issue.fields.issuetype.name} width={16} height={16} />} 
-                              label={issue.fields.issuetype.name} 
-                              size="small"
-                            />
-                          </TableCell>
-                          <TableCell>
-                            <Chip label={issue.fields.status.name} size="small" color="positive" />
-                          </TableCell>
-                          <TableCell>{issue.fields.reporter.displayName}</TableCell>
-                        </TableRow>
-                      ))
-                    )}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-            </Paper>
-          </>
-        ) : (
-          <Box sx={{ textAlign: 'center', mt: 10 }}>
-            <InboxIcon sx={{ fontSize: 80, color: 'text.disabled' }} />
-            <Typography variant="h5" sx={{ color: 'text.secondary', mt: 2 }}>
-              프로젝트를 선택해주세요.
-            </Typography>
-            <Typography sx={{ color: 'text.disabled' }}>
-              왼쪽 사이드바에서 프로젝트를 선택하면 이슈 목록이 표시됩니다.
+          <Tabs value={selectedPlatformId} onChange={handlePlatformTabChange} aria-label="platform tabs">
+            {platforms.map((platform) => (
+              <Tab key={platform.id} label={platform.name} value={platform.id} />
+            ))}
+          </Tabs>
+          <Button color="primary" startIcon={<AddIcon />} onClick={() => router.push('/welcome')}>
+            플랫폼 추가
+          </Button>
+        </Toolbar>
+      </AppBar>
+
+      {/* Dynamic Sidebar */}
+      {currentPlatform && (
+        <Drawer
+          variant="permanent"
+          sx={{
+            width: drawerWidth,
+            flexShrink: 0,
+            [`& .MuiDrawer-paper`]: {
+              width: drawerWidth,
+              boxSizing: 'border-box',
+              bgcolor: 'background.paper',
+              borderRight: `1px solid ${theme.palette.divider}`,
+              top: '64px', // Below AppBar
+              height: 'calc(100% - 64px)', // Adjust height
+            },
+          }}
+        >
+          <Box sx={{ p: 2, borderBottom: `1px solid ${theme.palette.divider}` }}>
+            <Typography variant="h6" component="div" sx={{ fontWeight: 'bold', color: 'primary.main' }}>
+              {currentPlatform.name}
             </Typography>
           </Box>
+          <Box sx={{ overflow: 'auto' }}>
+            {/* Dynamic Sidebar Content based on platform type */}
+            {currentPlatform.type === 'jira' && (
+              <List>
+                <ListItemButton onClick={() => handleOpenContentTab('jira-project-list', currentPlatform.id, currentPlatform, `${currentPlatform.name} 프로젝트`)}>
+                  <ListItemText primary="프로젝트" />
+                </ListItemButton>
+                <ListItemButton onClick={() => handleOpenContentTab('jira-team', currentPlatform.id, currentPlatform, `${currentPlatform.name} 팀`)}>
+                  <ListItemText primary="팀" />
+                </ListItemButton>
+                <ListItemButton onClick={() => handleOpenContentTab('jira-kanban', currentPlatform.id, currentPlatform, `${currentPlatform.name} 칸반보드`)}>
+                  <ListItemText primary="칸반보드" />
+                </ListItemButton>
+                <ListItemButton onClick={() => handleOpenContentTab('jira-issue-search', currentPlatform.id, currentPlatform, `${currentPlatform.name} 이슈 검색`)}>
+                  <ListItemText primary="이슈 검색" />
+                </ListItemButton>
+              </List>
+            )}
+            {/* Add other platform types here */}
+          </Box>
+        </Drawer>
+      )}
+
+      {/* Main Content Area */}
+      <Box
+        component="main"
+        sx={{
+          flexGrow: 1,
+          p: 3,
+          mt: '64px', // Offset for AppBar
+          ml: currentPlatform ? `${drawerWidth}px` : 0, // Offset for Drawer
+          width: currentPlatform ? `calc(100% - ${drawerWidth}px)` : '100%',
+          overflowY: 'auto',
+          display: 'flex',
+          flexDirection: 'column',
+        }}
+      >
+        {/* Content Tabs */}
+        {contentTabs.length > 0 && (
+          <Paper sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }}>
+            <Tabs
+              value={activeContentTabId}
+              onChange={handleContentTabChange}
+              variant="scrollable"
+              scrollButtons="auto"
+              aria-label="content tabs"
+            >
+              {contentTabs.map((tab) => (
+                <Tab
+                  key={tab.id}
+                  label={
+                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                      {tab.title}
+                      <IconButton
+                        size="small"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleCloseContentTab(tab.id);
+                        }}
+                        sx={{ ml: 1 }}
+                      >
+                        <CloseIcon fontSize="small" />
+                      </IconButton>
+                    </Box>
+                  }
+                  value={tab.id}
+                />
+              ))}
+            </Tabs>
+          </Paper>
         )}
-      </Container>
 
-      <Modal open={isModalOpen} onClose={handleCloseModal}>
-        <Card sx={modalStyle}>
-          {loadingModal ? (
-            <Box sx={{ p: 4, textAlign: 'center' }}><CircularProgress /></Box>
-          ) : selectedIssue ? (
-            <>
-              <CardHeader
-                title={`[${selectedIssue.key}] ${selectedIssue.fields.summary}`}
-                titleTypographyProps={{ variant: 'h5', fontWeight: 'bold' }}
-                subheader={<Chip label={selectedIssue.fields.status.name} color="important" size="small" sx={{ mt: 1 }} />}
-                action={
-                  <IconButton onClick={handleCloseModal}>
-                    <CloseIcon />
-                  </IconButton>
-                }
-                sx={{ borderBottom: `1px solid ${theme.palette.divider}` }}
-              />
-              <CardContent>
-                <Typography variant="h6" gutterBottom>설명</Typography>
-                <Paper variant="outlined" sx={{ p: 2, my: 2, bgcolor: 'action.hover', maxHeight: 300, overflowY: 'auto' }}>
-                  <Box dangerouslySetInnerHTML={{ __html: selectedIssue.renderedFields.description }} />
-                </Paper>
+        {/* Render active content tab */}
+        <Box sx={{ flexGrow: 1, overflowY: 'auto' }}>
+          {activeContentTabId && contentTabs.map((tab) => (
+            <Box key={tab.id} sx={{ display: activeContentTabId === tab.id ? 'block' : 'none', height: '100%' }}>
+              {tab.type === 'jira-project-list' && currentPlatform && (
+                <JiraPlatformView jiraPlatform={currentPlatform} onOpenContentTab={handleOpenContentTab} />
+              )}
+              {tab.type === 'jira-issue-detail' && currentPlatform && tab.data?.key && (
+                <IssueDetailView issueKey={tab.data.key} jiraPlatform={currentPlatform} onClose={() => handleCloseContentTab(tab.id)} />
+              )}
+              {tab.type === 'jira-team' && currentPlatform && (
+                <JiraTeamView jiraPlatform={currentPlatform} />
+              )}
+              {tab.type === 'jira-kanban' && currentPlatform && (
+                <JiraKanbanView jiraPlatform={currentPlatform} />
+              )}
+              {tab.type === 'jira-issue-search' && currentPlatform && (
+                <JiraIssueSearchView jiraPlatform={currentPlatform} />
+              )}
+              {/* Add other content types here */}
+            </Box>
+          ))}
+        </Box>
+      </Box>
 
-                <Typography variant="h6" gutterBottom>댓글</Typography>
-                <Divider sx={{ my: 1 }} />
-                {selectedIssue.changelog.histories.length > 0 ? (
-                  <List sx={{ maxHeight: 300, overflowY: 'auto' }}>
-                    {selectedIssue.changelog.histories.map((history) =>
-                      history.items.map((item: any) =>
-                        item.field === 'comment' ? (
-                          <ListItem key={history.id} sx={{ flexDirection: 'column', alignItems: 'flex-start' }}>
-                            <Typography variant="subtitle2" sx={{ fontWeight: 'bold' }}>{history.author.displayName}</Typography>
-                            <Typography variant="body2" sx={{ color: 'text.secondary' }}>{item.toString}</Typography>
-                          </ListItem>
-                        ) : null
-                      )
-                    )}
-                  </List>
-                ) : (
-                  <Typography sx={{ color: 'text.secondary', mt: 2 }}>댓글이 없습니다.</Typography>
-                )}
-              </CardContent>
-            </>
-          ) : (
-            <Alert severity="error">이슈 정보를 불러오는 데 실패했습니다.</Alert>
-          )}
-        </Card>
-      </Modal>
+      {/* Floating Action Button */}
+      <Fab
+        color="primary"
+        aria-label="settings"
+        sx={{
+          position: 'fixed',
+          bottom: 16,
+          left: '50%',
+          transform: 'translateX(-50%)',
+          zIndex: (theme) => theme.zIndex.drawer + 2,
+        }}
+        onClick={handleFabClick}
+      >
+        <SettingsIcon />
+      </Fab>
+      <Menu
+        anchorEl={anchorEl}
+        open={Boolean(anchorEl)}
+        onClose={handleFabMenuClose}
+        anchorOrigin={{
+          vertical: 'top',
+          horizontal: 'center',
+        }}
+        transformOrigin={{
+          vertical: 'bottom',
+          horizontal: 'center',
+        }}
+      >
+        <MenuItem onClick={handleSettingsClick}>설정</MenuItem>
+        {/* Future: Add other global actions here */}
+      </Menu>
     </Box>
   );
 }

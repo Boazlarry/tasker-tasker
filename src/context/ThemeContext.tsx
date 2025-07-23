@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useMemo, useEffect } from 'react';
-import { ThemeProvider as MuiThemeProvider, Theme } from '@mui/material/styles';
+import { ThemeProvider as MuiThemeProvider, createTheme, responsiveFontSizes } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
-import { lightTheme, darkTheme } from '../styles/theme';
+import { lightThemeOptions, darkThemeOptions, getCustomColors } from '../styles/theme';
 
 type ThemeMode = 'light' | 'dark' | 'system';
 
@@ -31,11 +31,40 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   }, []);
 
   const activeTheme = useMemo(() => {
+    const customColors = getCustomColors();
+
+    const currentLightThemeOptions = {
+      ...lightThemeOptions,
+      palette: {
+        ...lightThemeOptions.palette,
+        primary: { main: customColors.primary || (lightThemeOptions.palette?.primary as any)?.main },
+        secondary: { main: customColors.secondary || (lightThemeOptions.palette?.secondary as any)?.main },
+        positive: { main: customColors.positive || (lightThemeOptions.palette?.positive as any)?.main },
+        important: { main: customColors.important || (lightThemeOptions.palette?.important as any)?.main },
+        error: { main: customColors.error || (lightThemeOptions.palette?.error as any)?.main },
+      },
+    };
+
+    const currentDarkThemeOptions = {
+      ...darkThemeOptions,
+      palette: {
+        ...darkThemeOptions.palette,
+        primary: { main: customColors.primary || (darkThemeOptions.palette?.primary as any)?.main },
+        secondary: { main: customColors.secondary || (darkThemeOptions.palette?.secondary as any)?.main },
+        positive: { main: customColors.positive || (darkThemeOptions.palette?.positive as any)?.main },
+        important: { main: customColors.important || (darkThemeOptions.palette?.important as any)?.main },
+        error: { main: customColors.error || (darkThemeOptions.palette?.error as any)?.main },
+      },
+    };
+
+    let themeToApply;
     if (themeMode === 'system') {
       const prefersDarkMode = typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches;
-      return prefersDarkMode ? darkTheme : lightTheme;
+      themeToApply = prefersDarkMode ? currentDarkThemeOptions : currentLightThemeOptions;
+    } else {
+      themeToApply = themeMode === 'light' ? currentLightThemeOptions : currentDarkThemeOptions;
     }
-    return themeMode === 'light' ? lightTheme : darkTheme;
+    return responsiveFontSizes(createTheme(themeToApply));
   }, [themeMode]);
 
   const contextValue = useMemo(() => ({
