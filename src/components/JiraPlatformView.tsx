@@ -22,10 +22,20 @@ import {
   Container,
   Skeleton,
   useTheme,
+  Button,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  TextField,
+  MenuItem,
+  Avatar,
 } from '@mui/material';
 import InboxIcon from '@mui/icons-material/Inbox';
+import AddIcon from '@mui/icons-material/Add';
 import axios from 'axios';
 import { Platform } from '../hooks/usePlatformManager';
+import { createBasicAuthHeader } from '../lib/jiraAuth';
 
 const drawerWidth = 280;
 
@@ -61,6 +71,11 @@ export default function JiraPlatformView({ jiraPlatform, onOpenContentTab }: Jir
   const [loadingProjects, setLoadingProjects] = useState(true);
   const [loadingIssues, setLoadingIssues] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [createSummary, setCreateSummary] = useState('');
+  const [createDescription, setCreateDescription] = useState('');
+  const [createIssueType, setCreateIssueType] = useState('Task');
+  const [savingIssue, setSavingIssue] = useState(false);
 
   const handleProjectClick = useCallback(async (projectKey: string) => {
     setSelectedProject(projectKey);
@@ -69,14 +84,14 @@ export default function JiraPlatformView({ jiraPlatform, onOpenContentTab }: Jir
     setIssues([]);
     setError(null);
 
-    const token = Buffer.from(`${jiraPlatform.auth.username}:${jiraPlatform.auth.apiToken}`).toString('base64');
+    const authorization = createBasicAuthHeader(jiraPlatform.auth.username, jiraPlatform.auth.apiToken);
 
     try {
       const response = await axios.get(
         `/api/jira/issues?projectKey=${projectKey}`,
         {
           headers: {
-            Authorization: `Basic ${token}`,
+            Authorization: authorization,
             'X-Jira-Url': jiraPlatform.url,
           },
         }
@@ -90,12 +105,12 @@ export default function JiraPlatformView({ jiraPlatform, onOpenContentTab }: Jir
 
   useEffect(() => {
     const fetchProjects = async () => {
-      const token = Buffer.from(`${jiraPlatform.auth.username}:${jiraPlatform.auth.apiToken}`).toString('base64');
+      const authorization = createBasicAuthHeader(jiraPlatform.auth.username, jiraPlatform.auth.apiToken);
 
       try {
         const response = await axios.get('/api/jira/projects', {
           headers: {
-            Authorization: `Basic ${token}`,
+            Authorization: authorization,
             'X-Jira-Url': jiraPlatform.url,
           },
         });
@@ -118,6 +133,46 @@ export default function JiraPlatformView({ jiraPlatform, onOpenContentTab }: Jir
 
   const handleIssueClick = (issue: Issue) => {
     onOpenContentTab('jira-issue-detail', issue.key, jiraPlatform, issue.fields.summary);
+  };
+
+  const handleCreateIssue = async () => {
+    if (!selectedProject || !createSummary.trim()) {
+      setError('프로젝트와 이슈 요약이 필요합니다.');
+      return;
+    }
+
+    setSavingIssue(true);
+    setError(null);
+
+    try {
+      const response = await axios.post(
+        '/api/jira/issues',
+        {
+          projectKey: selectedProject,
+          summary: createSummary.trim(),
+          description: createDescription,
+          issueType: createIssueType,
+        },
+        {
+          headers: {
+            Authorization: createBasicAuthHeader(jiraPlatform.auth.username, jiraPlatform.auth.apiToken),
+            'X-Jira-Url': jiraPlatform.url,
+          },
+        }
+      );
+
+      const createdIssue: Issue = response.data;
+      setIssues((prevIssues) => [createdIssue, ...prevIssues]);
+      setCreateDialogOpen(false);
+      setCreateSummary('');
+      setCreateDescription('');
+      setCreateIssueType('Task');
+      onOpenContentTab('jira-issue-detail', createdIssue.key, jiraPlatform, createdIssue.fields.summary);
+    } catch (err: any) {
+      setError(err.response?.data?.error || '이슈 생성에 실패했습니다.');
+    } finally {
+      setSavingIssue(false);
+    }
   };
 
   return (
@@ -179,6 +234,14 @@ export default function JiraPlatformView({ jiraPlatform, onOpenContentTab }: Jir
             <Typography variant="h4" component="h1" gutterBottom sx={{ fontWeight: 'bold' }}>
               {selectedProject} 이슈 목록
             </Typography>
+            <Button
+              variant="contained"
+              startIcon={<AddIcon />}
+              onClick={() => setCreateDialogOpen(true)}
+              sx={{ mb: 2 }}
+            >
+              이슈 생성
+            </Button>
             {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
             <Paper sx={{ p: 2, mt: 2 }}>
               <TableContainer>
@@ -211,9 +274,10 @@ export default function JiraPlatformView({ jiraPlatform, onOpenContentTab }: Jir
                           sx={{ cursor: 'pointer', '&:hover': { backgroundColor: 'action.hover' } }}
                         >
                           <TableCell sx={{ color: 'secondary.main', fontWeight: 'medium' }}>{issue.key}</TableCell>
+                          <TableCell>{issue.fields.summary}</TableCell>
                           <TableCell>
                             <Chip 
-                              avatar={<img src={issue.fields.issuetype.iconUrl} alt={issue.fields.issuetype.name} width={16} height={16} />} 
+                              avatar={<Avatar src={issue.fields.issuetype.iconUrl} alt={issue.fields.issuetype.name} sx={{ width: 16, height: 16 }} />} 
                               label={issue.fields.issuetype.name} 
                               size="small"
                             />
@@ -242,6 +306,42 @@ export default function JiraPlatformView({ jiraPlatform, onOpenContentTab }: Jir
           </Box>
         )}
       </Container>
+      <Dialog open={createDialogOpen} onClose={() => setCreateDialogOpen(false)} fullWidth maxWidth="sm">
+        <DialogTitle>새 Jira 이슈 생성</DialogTitle>
+        <DialogContent>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
+            <TextField
+              select
+              label="이슈 타입"
+              value={createIssueType}
+              onChange={(event) => setCreateIssueType(event.target.value)}
+            >
+              <MenuItem value="Task">Task</MenuItem>
+              <MenuItem value="Story">Story</MenuItem>
+              <MenuItem value="Bug">Bug</MenuItem>
+            </TextField>
+            <TextField
+              required
+              label="요약"
+              value={createSummary}
+              onChange={(event) => setCreateSummary(event.target.value)}
+            />
+            <TextField
+              label="설명"
+              multiline
+              minRows={4}
+              value={createDescription}
+              onChange={(event) => setCreateDescription(event.target.value)}
+            />
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setCreateDialogOpen(false)} disabled={savingIssue}>취소</Button>
+          <Button onClick={handleCreateIssue} variant="contained" disabled={savingIssue || !createSummary.trim()}>
+            생성
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }

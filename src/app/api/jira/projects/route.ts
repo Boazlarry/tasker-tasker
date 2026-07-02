@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import axios from 'axios';
+import { isMockJiraUrl, mockProjects } from '@/lib/mockJira';
 
 export async function GET(request: NextRequest) {
   // MVP 단계에서는 헤더에서 직접 인증 정보를 받습니다.
@@ -12,6 +13,10 @@ export async function GET(request: NextRequest) {
       { error: 'Jira URL과 인증 정보가 필요합니다.' },
       { status: 401 }
     );
+  }
+
+  if (isMockJiraUrl(jiraUrl)) {
+    return NextResponse.json(mockProjects);
   }
 
   try {

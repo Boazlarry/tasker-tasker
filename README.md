@@ -34,3 +34,25 @@ MVP 버전에서는 **Jira 7.x 버전** 연동에 집중합니다.
 4.  **데이터 시각화 (프론트엔드):**
     -   API를 통해 가져온 프로젝트 및 이슈 데이터를 화면에 렌더링.
 5.  **데스크톱 앱 패키징:** MVP 웹 개발 완료 후 Tauri를 이용해 데스크톱 앱으로 빌드.
+
+## 개발 하네스
+
+- SDD 문서: `docs/sdd/`
+- 현재 구현 현황: `docs/current-implementation.md`
+- 도메인 구성도: `docs/domain-map.md`
+- 병렬 작업용 에이전트 역할: `docs/agents/`
+- 전체 검증: `npm run verify`
+- 개별 검증: `npm run lint`, `npm run typecheck`, `npm run test`, `npm run build`
+
+## 배포
+
+- Vercel: https://taskertasker.vercel.app
+- 실제 Jira 서버 없이 확인하려면 첫 화면에서 `데모 Jira로 바로 시작`을 누릅니다.
+- 데모는 `mock://jira-7` 로컬 전용 플랫폼을 브라우저 저장소에 추가하고, mock Jira API로 프로젝트/이슈/상세/검색/팀/칸반/생성/편집 흐름을 확인합니다.
+- Vercel 배포본에는 실제 Jira 크레덴셜을 입력하지 않습니다. 저장은 브라우저 로컬이지만 API 요청은 Vercel route를 통과하므로, 실제 Jira 연결은 로컬 실행 또는 이후 Tauri 보안 저장소 흐름에서 다룹니다.
+
+## 라이선스 및 준수
+
+- 라이선스: proprietary, all rights reserved. 자세한 내용은 `LICENSE.md`를 확인하세요.
+- Atlassian/Jira 관련 준수 메모는 `docs/compliance/atlassian.md`를 확인하세요.
+- Tasker Tasker는 Atlassian과 무관한 독립 프로젝트입니다.

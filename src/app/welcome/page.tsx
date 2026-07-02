@@ -18,8 +18,10 @@ import {
   Select,
   MenuItem,
   CircularProgress,
+  Alert,
 } from '@mui/material';
 import { usePlatformManager } from '../../hooks/usePlatformManager';
+import { MOCK_JIRA_URL } from '../../lib/mockJira';
 
 const steps = [
   { label: '플랫폼 선택', description: `연동할 플랫폼 종류를 선택하세요.` },
@@ -62,6 +64,16 @@ export default function WelcomePage() {
       setError('모든 필드를 입력해주세요.');
       setLoading(false);
     }
+  };
+
+  const handleStartDemo = () => {
+    addPlatform({
+      type: 'jira',
+      name: 'Tasker Demo Jira',
+      url: MOCK_JIRA_URL,
+      auth: { username: 'demo', apiToken: 'demo' },
+    });
+    router.push('/');
   };
 
   const getStepContent = (step: number) => {
@@ -132,6 +144,17 @@ export default function WelcomePage() {
         <Typography align="center" color="text.secondary" sx={{ mb: 4 }}>
           첫 번째 작업 플랫폼을 연동하여 생산성을 높여보세요.
         </Typography>
+        <Button
+          variant="outlined"
+          fullWidth
+          onClick={handleStartDemo}
+          sx={{ mb: 3 }}
+        >
+          데모 Jira로 바로 시작
+        </Button>
+        <Alert severity="info" sx={{ mb: 3 }}>
+          Vercel 배포본은 mock 확인용입니다. 실제 Jira 크레덴셜은 로컬 실행 또는 이후 Tauri 보안 저장소 흐름에서만 사용하세요.
+        </Alert>
         <Stepper activeStep={activeStep} orientation="vertical">
           {steps.map((step, index) => (
             <Step key={step.label}>

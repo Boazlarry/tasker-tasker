@@ -1,0 +1,126 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="780" viewBox="0 0 1280 780" role="img" aria-labelledby="title desc">
+  <title id="title">Tasker Tasker 도메인 구성도</title>
+  <desc id="desc">브라우저 앱, 로컬 저장, Next.js Jira API 프록시, 외부 Jira, MVP placeholder 도메인, SDD 하네스를 보여주는 구성도입니다.</desc>
+  <defs>
+    <style>
+      .bg { fill: #f7f8fb; }
+      .band { fill: #ffffff; stroke: #c7cfdd; stroke-width: 2; }
+      .box { fill: #ffffff; stroke: #516173; stroke-width: 2; rx: 10; }
+      .done { fill: #e8f5ee; stroke: #26734d; }
+      .partial { fill: #fff6df; stroke: #a66b00; }
+      .stub { fill: #f1eefb; stroke: #6a55a3; }
+      .external { fill: #eaf3ff; stroke: #2469a6; }
+      .harness { fill: #edf7f8; stroke: #28737a; }
+      .title { font: 700 30px Arial, sans-serif; fill: #17202a; }
+      .subtitle { font: 400 15px Arial, sans-serif; fill: #4d5b6a; }
+      .label { font: 700 17px Arial, sans-serif; fill: #17202a; }
+      .small { font: 400 13px Arial, sans-serif; fill: #344255; }
+      .tiny { font: 400 12px Arial, sans-serif; fill: #516173; }
+      .arrow { stroke: #344255; stroke-width: 2.2; fill: none; marker-end: url(#arrowhead); }
+      .dashed { stroke-dasharray: 6 6; }
+    </style>
+    <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#344255" />
+    </marker>
+  </defs>
+
+  <rect class="bg" width="1280" height="780" />
+  <text x="52" y="56" class="title">Tasker Tasker 도메인 구성도</text>
+  <text x="52" y="82" class="subtitle">현재 도메인과 확정된 MVP 확장: 로컬 크레덴셜, 원천별 댓글, 팀, 칸반, 검색, 생성, 편집.</text>
+
+  <rect x="44" y="118" width="372" height="508" class="band" rx="16" />
+  <text x="68" y="150" class="label">브라우저 앱</text>
+  <text x="68" y="173" class="small">Next.js 클라이언트 UI, MUI 테마</text>
+
+  <rect x="72" y="202" width="148" height="76" class="box done" />
+  <text x="92" y="228" class="label">온보딩</text>
+  <text x="92" y="250" class="small">/welcome</text>
+  <text x="92" y="268" class="tiny">mock 연결 테스트</text>
+
+  <rect x="244" y="202" width="144" height="76" class="box done" />
+  <text x="266" y="228" class="label">설정</text>
+  <text x="266" y="250" class="small">플랫폼 CRUD</text>
+  <text x="266" y="268" class="tiny">테마 설정</text>
+
+  <rect x="72" y="304" width="316" height="92" class="box partial" />
+  <text x="94" y="332" class="label">워크스페이스 셸</text>
+  <text x="94" y="354" class="small">플랫폼 탭, Jira 내비게이션, 콘텐츠 탭</text>
+  <text x="94" y="374" class="tiny">플랫폼이 없으면 온보딩으로 이동</text>
+
+  <rect x="72" y="422" width="148" height="76" class="box partial" />
+  <text x="91" y="448" class="label">프로젝트/이슈</text>
+  <text x="91" y="470" class="small">프로젝트 조회</text>
+  <text x="91" y="488" class="tiny">프로젝트 이슈 조회</text>
+
+  <rect x="244" y="422" width="144" height="76" class="box partial" />
+  <text x="264" y="448" class="label">이슈 상세</text>
+  <text x="264" y="470" class="small">요약/상태</text>
+  <text x="264" y="488" class="tiny">rendered description</text>
+
+  <rect x="72" y="524" width="316" height="70" class="box stub" />
+  <text x="94" y="552" class="label">MVP UI Placeholder</text>
+  <text x="94" y="574" class="small">팀 뷰, 칸반 뷰, 이슈 검색</text>
+
+  <rect x="468" y="136" width="280" height="152" class="band" rx="16" />
+  <text x="492" y="168" class="label">로컬 상태</text>
+  <rect x="494" y="194" width="228" height="70" class="box partial" />
+  <text x="516" y="220" class="label">로컬 전용 저장</text>
+  <text x="516" y="242" class="small">크레덴셜, 플랫폼, 테마</text>
+  <text x="516" y="260" class="tiny">현재는 browser localStorage</text>
+
+  <rect x="468" y="326" width="280" height="178" class="band" rx="16" />
+  <text x="492" y="358" class="label">Next.js API 프록시</text>
+  <rect x="494" y="384" width="228" height="92" class="box partial" />
+  <text x="516" y="410" class="label">Jira Route</text>
+  <text x="516" y="432" class="small">프로젝트, 이슈, 상세</text>
+  <text x="516" y="452" class="tiny">생성/편집/댓글 예정</text>
+
+  <rect x="808" y="136" width="382" height="368" class="band" rx="16" />
+  <text x="832" y="168" class="label">외부 Jira 7.x</text>
+  <text x="832" y="191" class="small">프로젝트, 이슈, 댓글, 사용자, workflow 원천</text>
+
+  <rect x="836" y="222" width="152" height="72" class="box external" />
+  <text x="858" y="250" class="label">프로젝트</text>
+  <text x="858" y="272" class="small">REST API v2</text>
+
+  <rect x="1010" y="222" width="152" height="72" class="box external" />
+  <text x="1032" y="250" class="label">이슈</text>
+  <text x="1032" y="272" class="small">필드, metadata</text>
+
+  <rect x="836" y="324" width="152" height="72" class="box external" />
+  <text x="858" y="352" class="label">댓글</text>
+  <text x="858" y="374" class="small">원천 라벨</text>
+
+  <rect x="1010" y="324" width="152" height="72" class="box external" />
+  <text x="1032" y="352" class="label">Changelog</text>
+  <text x="1032" y="374" class="small">활동 원천</text>
+
+  <rect x="836" y="426" width="326" height="52" class="box external" />
+  <text x="858" y="458" class="label">사용자, 역할, Workflow, Board</text>
+
+  <rect x="468" y="550" width="722" height="128" class="band" rx="16" />
+  <text x="492" y="582" class="label">SDD와 병렬 작업 하네스</text>
+  <rect x="494" y="608" width="210" height="44" class="box harness" />
+  <text x="516" y="636" class="small">docs/sdd 스펙</text>
+  <rect x="730" y="608" width="210" height="44" class="box harness" />
+  <text x="752" y="636" class="small">docs/agents 역할</text>
+  <rect x="966" y="608" width="196" height="44" class="box harness" />
+  <text x="988" y="636" class="small">lint/type/test/build CI</text>
+
+  <path d="M388 240 L494 229" class="arrow" />
+  <path d="M388 350 L494 430" class="arrow" />
+  <path d="M722 430 L836 258" class="arrow" />
+  <path d="M722 430 L1010 258" class="arrow" />
+  <path d="M722 430 L836 360" class="arrow dashed" />
+  <path d="M722 430 L1010 360" class="arrow dashed" />
+  <path d="M230 594 L494 630" class="arrow dashed" />
+
+  <rect x="52" y="704" width="22" height="14" class="done" />
+  <text x="84" y="716" class="tiny">완료</text>
+  <rect x="148" y="704" width="22" height="14" class="partial" />
+  <text x="180" y="716" class="tiny">부분 구현</text>
+  <rect x="258" y="704" width="22" height="14" class="stub" />
+  <text x="290" y="716" class="tiny">Placeholder/MVP</text>
+  <rect x="394" y="704" width="22" height="14" class="external" />
+  <text x="426" y="716" class="tiny">외부 Jira 원천</text>
+</svg>
