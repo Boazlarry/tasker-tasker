@@ -68,6 +68,17 @@ const baseThemeOptions: ThemeOptions = {
       styleOverrides: {
         root: {
           borderRadius: 8,
+          transition: 'transform 160ms ease, background-color 160ms ease, border-color 160ms ease, box-shadow 160ms ease',
+          '&:hover': {
+            transform: 'translateY(-1px)',
+          },
+        },
+      },
+    },
+    MuiChip: {
+      styleOverrides: {
+        root: {
+          fontWeight: 700,
         },
       },
     },
@@ -89,6 +100,17 @@ const baseThemeOptions: ThemeOptions = {
       styleOverrides: {
         root: {
           backgroundImage: 'none',
+          transition: 'border-color 180ms ease, box-shadow 180ms ease, transform 180ms ease',
+        },
+      },
+    },
+    MuiSkeleton: {
+      defaultProps: {
+        animation: 'wave',
+      },
+      styleOverrides: {
+        root: {
+          borderRadius: 8,
         },
       },
     },
@@ -96,6 +118,13 @@ const baseThemeOptions: ThemeOptions = {
       styleOverrides: {
         head: {
           fontWeight: 800,
+        },
+      },
+    },
+    MuiTableRow: {
+      styleOverrides: {
+        root: {
+          transition: 'background-color 160ms ease',
         },
       },
     },
@@ -117,11 +146,11 @@ export const lightThemeOptions: ThemeOptions = {
   palette: {
     mode: 'light',
     primary: {
-      main: '#22665b',
+      main: '#21665c',
       contrastText: '#ffffff',
     },
     secondary: {
-      main: '#4f658b',
+      main: '#3f63a2',
       contrastText: '#ffffff',
     },
     background: {
@@ -137,11 +166,11 @@ export const lightThemeOptions: ThemeOptions = {
       contrastText: '#ffffff',
     },
     important: {
-      main: '#b7791f',
+      main: '#bd7622',
       contrastText: '#ffffff',
     },
     error: {
-      main: '#c2413d',
+      main: '#b94157',
     },
     divider: '#d9ded8',
   },
@@ -152,11 +181,11 @@ export const darkThemeOptions: ThemeOptions = {
   palette: {
     mode: 'dark',
     primary: {
-      main: '#5fb7a7',
+      main: '#65d3c4',
       contrastText: '#10201d',
     },
     secondary: {
-      main: '#9bb5df',
+      main: '#9ebcff',
       contrastText: '#111827',
     },
     background: {
@@ -172,11 +201,11 @@ export const darkThemeOptions: ThemeOptions = {
       contrastText: '#102016',
     },
     important: {
-      main: '#d8a23a',
+      main: '#e1a640',
       contrastText: '#1f1605',
     },
     error: {
-      main: '#f07167',
+      main: '#ff7a8f',
     },
     divider: '#31413b',
   },

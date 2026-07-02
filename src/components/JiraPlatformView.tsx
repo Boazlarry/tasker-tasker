@@ -25,6 +25,7 @@ import {
   TableCell,
   TableContainer,
   TableHead,
+  TablePagination,
   TableRow,
   TextField,
   Typography,
@@ -69,6 +70,10 @@ export default function JiraPlatformView({ jiraPlatform, onOpenContentTab }: Jir
   const [loadingProjects, setLoadingProjects] = useState(true);
   const [loadingIssues, setLoadingIssues] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [projectPage, setProjectPage] = useState(0);
+  const [projectRowsPerPage, setProjectRowsPerPage] = useState(6);
+  const [issuePage, setIssuePage] = useState(0);
+  const [issueRowsPerPage, setIssueRowsPerPage] = useState(5);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [createSummary, setCreateSummary] = useState('');
   const [createDescription, setCreateDescription] = useState('');
@@ -83,6 +88,7 @@ export default function JiraPlatformView({ jiraPlatform, onOpenContentTab }: Jir
     localStorage.setItem('lastSelectedProject', projectKey);
     setLoadingIssues(true);
     setIssues([]);
+    setIssuePage(0);
     setError(null);
 
     try {
@@ -113,6 +119,7 @@ export default function JiraPlatformView({ jiraPlatform, onOpenContentTab }: Jir
       });
       const fetchedProjects: Project[] = response.data;
       setProjects(fetchedProjects);
+      setProjectPage(0);
 
       const lastSelectedProject =
         localStorage.getItem(`lastSelectedProject:${jiraPlatform.id}`) ||
@@ -133,6 +140,18 @@ export default function JiraPlatformView({ jiraPlatform, onOpenContentTab }: Jir
   useEffect(() => {
     fetchProjects();
   }, [fetchProjects]);
+
+  useEffect(() => {
+    if (projectPage > 0 && projectPage * projectRowsPerPage >= projects.length) {
+      setProjectPage(Math.max(0, Math.ceil(projects.length / projectRowsPerPage) - 1));
+    }
+  }, [projectPage, projectRowsPerPage, projects.length]);
+
+  useEffect(() => {
+    if (issuePage > 0 && issuePage * issueRowsPerPage >= issues.length) {
+      setIssuePage(Math.max(0, Math.ceil(issues.length / issueRowsPerPage) - 1));
+    }
+  }, [issuePage, issueRowsPerPage, issues.length]);
 
   const handleIssueClick = (issue: Issue) => {
     onOpenContentTab('jira-issue-detail', issue.key, jiraPlatform, issue.fields.summary);
@@ -179,6 +198,14 @@ export default function JiraPlatformView({ jiraPlatform, onOpenContentTab }: Jir
   };
 
   const selectedProjectName = projects.find((project) => project.key === selectedProject)?.name;
+  const visibleProjects = projects.slice(
+    projectPage * projectRowsPerPage,
+    projectPage * projectRowsPerPage + projectRowsPerPage
+  );
+  const visibleIssues = issues.slice(
+    issuePage * issueRowsPerPage,
+    issuePage * issueRowsPerPage + issueRowsPerPage
+  );
 
   return (
     <Box sx={{ minHeight: '100%', display: 'grid', gridTemplateColumns: { xs: '1fr', lg: '280px minmax(0, 1fr)' }, gap: 2 }}>
@@ -190,6 +217,7 @@ export default function JiraPlatformView({ jiraPlatform, onOpenContentTab }: Jir
           alignSelf: 'start',
           position: { lg: 'sticky' },
           top: 0,
+          animation: 'tasker-rise-in 220ms ease-out',
         }}
       >
         <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 1.5 }}>
@@ -209,17 +237,25 @@ export default function JiraPlatformView({ jiraPlatform, onOpenContentTab }: Jir
             {[...Array(5)].map((_, index) => <Skeleton key={index} height={44} />)}
           </Stack>
         ) : (
+          <>
           <List disablePadding sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-            {projects.map((project) => (
+            {visibleProjects.map((project) => (
               <ListItemButton
                 key={project.id}
                 selected={selectedProject === project.key}
                 onClick={() => handleProjectClick(project.key)}
                 sx={{
-                  borderRadius: 1.5,
+                  borderRadius: 1,
+                  border: '1px solid transparent',
+                  transition: 'transform 160ms ease, border-color 160ms ease, background-color 160ms ease',
+                  '&:hover': {
+                    transform: 'translateX(2px)',
+                    borderColor: 'primary.main',
+                  },
                   '&.Mui-selected': {
-                    bgcolor: 'rgba(34, 102, 91, 0.11)',
-                    '&:hover': { bgcolor: 'rgba(34, 102, 91, 0.16)' },
+                    bgcolor: 'rgba(101, 211, 196, 0.13)',
+                    borderColor: 'primary.main',
+                    '&:hover': { bgcolor: 'rgba(101, 211, 196, 0.18)' },
                   },
                 }}
               >
@@ -231,10 +267,35 @@ export default function JiraPlatformView({ jiraPlatform, onOpenContentTab }: Jir
               </ListItemButton>
             ))}
           </List>
+          {projects.length > projectRowsPerPage && (
+            <TablePagination
+              component="div"
+              count={projects.length}
+              page={projectPage}
+              onPageChange={(_, page) => setProjectPage(page)}
+              rowsPerPage={projectRowsPerPage}
+              onRowsPerPageChange={(event) => {
+                setProjectRowsPerPage(Number(event.target.value));
+                setProjectPage(0);
+              }}
+              rowsPerPageOptions={[6, 12, 24]}
+              labelRowsPerPage="프로젝트"
+              sx={{ mt: 1, mx: -1.5, '.MuiTablePagination-toolbar': { px: 0.5 } }}
+            />
+          )}
+          </>
         )}
       </Paper>
 
-      <Paper variant="outlined" sx={{ borderColor: 'divider', overflow: 'hidden', minWidth: 0 }}>
+      <Paper
+        variant="outlined"
+        sx={{
+          borderColor: 'divider',
+          overflow: 'hidden',
+          minWidth: 0,
+          animation: 'tasker-rise-in 260ms ease-out',
+        }}
+      >
         <Box
           sx={{
             p: 2,
@@ -254,6 +315,7 @@ export default function JiraPlatformView({ jiraPlatform, onOpenContentTab }: Jir
               {selectedProjectName || '프로젝트를 선택하면 이슈 목록이 표시됩니다.'}
             </Typography>
           </Box>
+          <Chip label={`${issues.length} issues`} size="small" variant="outlined" />
           <Button
             variant="contained"
             startIcon={<AddIcon />}
@@ -283,7 +345,7 @@ export default function JiraPlatformView({ jiraPlatform, onOpenContentTab }: Jir
 
               {!loadingIssues && issues.length > 0 && (
                 <Stack spacing={1.25}>
-                  {issues.map((issue) => (
+                  {visibleIssues.map((issue) => (
                     <Box
                       key={issue.key}
                       role="button"
@@ -330,6 +392,23 @@ export default function JiraPlatformView({ jiraPlatform, onOpenContentTab }: Jir
                 </Stack>
               )}
 
+              {!loadingIssues && issues.length > 0 && (
+                <TablePagination
+                  component="div"
+                  count={issues.length}
+                  page={issuePage}
+                  onPageChange={(_, page) => setIssuePage(page)}
+                  rowsPerPage={issueRowsPerPage}
+                  onRowsPerPageChange={(event) => {
+                    setIssueRowsPerPage(Number(event.target.value));
+                    setIssuePage(0);
+                  }}
+                  rowsPerPageOptions={[5, 10, 25]}
+                  labelRowsPerPage="이슈"
+                  sx={{ mt: 1, mx: -1.5 }}
+                />
+              )}
+
               {!loadingIssues && issues.length === 0 && (
                 <Box sx={{ py: 6, textAlign: 'center' }}>
                   <Typography variant="h6">이슈가 없습니다</Typography>
@@ -338,7 +417,7 @@ export default function JiraPlatformView({ jiraPlatform, onOpenContentTab }: Jir
               )}
             </Box>
 
-            <TableContainer sx={{ display: { xs: 'none', sm: 'block' }, maxHeight: 'calc(100dvh - 250px)' }}>
+            <TableContainer className="tasker-scrollbar" sx={{ display: { xs: 'none', sm: 'block' }, maxHeight: 'calc(100dvh - 310px)' }}>
               <Table stickyHeader aria-label="issues table" sx={{ tableLayout: 'fixed' }}>
                 <TableHead>
                   <TableRow>
@@ -359,7 +438,7 @@ export default function JiraPlatformView({ jiraPlatform, onOpenContentTab }: Jir
                       <TableCell><Skeleton /></TableCell>
                     </TableRow>
                   ))}
-                  {!loadingIssues && issues.map((issue) => (
+                  {!loadingIssues && visibleIssues.map((issue) => (
                     <TableRow
                       key={issue.key}
                       hover
@@ -401,6 +480,22 @@ export default function JiraPlatformView({ jiraPlatform, onOpenContentTab }: Jir
                 </TableBody>
               </Table>
             </TableContainer>
+            {!loadingIssues && issues.length > 0 && (
+              <TablePagination
+                component="div"
+                count={issues.length}
+                page={issuePage}
+                onPageChange={(_, page) => setIssuePage(page)}
+                rowsPerPage={issueRowsPerPage}
+                onRowsPerPageChange={(event) => {
+                  setIssueRowsPerPage(Number(event.target.value));
+                  setIssuePage(0);
+                }}
+                rowsPerPageOptions={[5, 10, 25]}
+                labelRowsPerPage="이슈"
+                sx={{ display: { xs: 'none', sm: 'block' }, borderTop: '1px solid', borderColor: 'divider' }}
+              />
+            )}
           </>
         ) : (
           <Box sx={{ p: 5, textAlign: 'center' }}>

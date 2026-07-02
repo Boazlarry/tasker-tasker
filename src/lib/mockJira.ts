@@ -47,6 +47,38 @@ export const mockProjects = [
 const issueTypeIcon =
   'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22%3E%3Crect width=%2224%22 height=%2224%22 rx=%224%22 fill=%22%230052CC%22/%3E%3Cpath d=%22M7 7h10v2H7zm0 4h10v2H7zm0 4h7v2H7z%22 fill=%22white%22/%3E%3C/svg%3E';
 
+function demoIssue(input: {
+  id: string;
+  key: string;
+  summary: string;
+  status: string;
+  reporter: string;
+  assignee?: string;
+  type?: string;
+  priority?: string;
+  labels?: string[];
+}): MockJiraIssue {
+  return {
+    id: input.id,
+    key: input.key,
+    fields: {
+      summary: input.summary,
+      description: `${input.summary} 항목의 mock 설명입니다.`,
+      issuetype: { name: input.type || 'Task', iconUrl: issueTypeIcon },
+      reporter: { displayName: input.reporter },
+      assignee: { displayName: input.assignee || 'Unassigned' },
+      status: { name: input.status },
+      priority: { name: input.priority || 'Medium' },
+      labels: input.labels || ['demo'],
+      comment: { comments: [] },
+    },
+    renderedFields: {
+      description: `<p>${escapeHtml(input.summary)} 항목의 mock 설명입니다.</p>`,
+    },
+    changelog: { histories: [] },
+  };
+}
+
 export const mockIssues: MockJiraIssue[] = [
   {
     id: '20000',
@@ -104,6 +136,63 @@ export const mockIssues: MockJiraIssue[] = [
     },
     changelog: { histories: [] },
   },
+  demoIssue({
+    id: '20003',
+    key: 'TASK-3',
+    summary: '프로젝트 목록 화면에 페이지네이션과 로딩 스켈레톤을 적용한다',
+    status: 'In Progress',
+    reporter: 'Design Lead',
+    assignee: 'Frontend Agent',
+    type: 'Story',
+    labels: ['ui', 'pagination'],
+  }),
+  demoIssue({
+    id: '20004',
+    key: 'TASK-4',
+    summary: '하단 quick dock로 주요 Jira 뷰 전환을 복구한다',
+    status: 'To Do',
+    reporter: 'Product Owner',
+    assignee: 'Frontend Agent',
+    labels: ['navigation'],
+  }),
+  demoIssue({
+    id: '20005',
+    key: 'TASK-5',
+    summary: '검색 결과 테이블을 고정 높이와 페이지 단위로 정리한다',
+    status: 'Done',
+    reporter: 'Demo Reviewer',
+    assignee: 'QA Agent',
+    priority: 'High',
+    labels: ['search', 'table'],
+  }),
+  demoIssue({
+    id: '20006',
+    key: 'TASK-6',
+    summary: '팀 뷰를 담당자 통계 테이블로 개선한다',
+    status: 'In Progress',
+    reporter: 'Demo Planner',
+    assignee: 'Data Agent',
+    labels: ['team'],
+  }),
+  demoIssue({
+    id: '20007',
+    key: 'TASK-7',
+    summary: '칸반 컬럼 내부 스크롤과 상태 카운트를 추가한다',
+    status: 'To Do',
+    reporter: 'Workflow Bot',
+    assignee: 'Frontend Agent',
+    labels: ['kanban'],
+  }),
+  demoIssue({
+    id: '20008',
+    key: 'TASK-8',
+    summary: '브랜드 파비콘과 다채로운 인터랙션 톤을 정리한다',
+    status: 'Done',
+    reporter: 'Design Lead',
+    assignee: 'Frontend Agent',
+    type: 'Story',
+    labels: ['brand'],
+  }),
   {
     id: '20002',
     key: 'OPS-1',
@@ -131,6 +220,25 @@ export const mockIssues: MockJiraIssue[] = [
       ],
     },
   },
+  demoIssue({
+    id: '20009',
+    key: 'OPS-2',
+    summary: '운영 보드에서 반복 업무를 상태별로 확인한다',
+    status: 'To Do',
+    reporter: 'Ops Manager',
+    assignee: 'QA Agent',
+    labels: ['ops'],
+  }),
+  demoIssue({
+    id: '20010',
+    key: 'LAB-1',
+    summary: 'Jira 7.x API 응답 호환성 샘플을 확장한다',
+    status: 'In Progress',
+    reporter: 'Integration Engineer',
+    assignee: 'Data Agent',
+    type: 'Story',
+    labels: ['jira7', 'api'],
+  }),
 ];
 
 export function getMockIssues(projectKey?: string | null, query?: string | null) {

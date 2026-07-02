@@ -18,6 +18,7 @@ import {
   Paper,
   Chip,
   Divider,
+  Tooltip,
 } from '@mui/material';
 import SettingsIcon from '@mui/icons-material/Settings';
 import AddIcon from '@mui/icons-material/Add';
@@ -51,6 +52,8 @@ const jiraNavItems: Array<{
   label: string;
   description: string;
   icon: React.ReactNode;
+  accent: string;
+  surface: string;
 }> = [
   {
     type: 'jira-project-list',
@@ -58,6 +61,8 @@ const jiraNavItems: Array<{
     label: '프로젝트',
     description: '프로젝트별 이슈',
     icon: <FolderOutlinedIcon fontSize="small" />,
+    accent: '#65d3c4',
+    surface: 'rgba(101, 211, 196, 0.18)',
   },
   {
     type: 'jira-team',
@@ -65,6 +70,8 @@ const jiraNavItems: Array<{
     label: '팀',
     description: '담당자와 보고자',
     icon: <GroupsOutlinedIcon fontSize="small" />,
+    accent: '#9ebcff',
+    surface: 'rgba(158, 188, 255, 0.17)',
   },
   {
     type: 'jira-kanban',
@@ -72,6 +79,8 @@ const jiraNavItems: Array<{
     label: '칸반보드',
     description: '상태별 흐름',
     icon: <ViewKanbanOutlinedIcon fontSize="small" />,
+    accent: '#e1a640',
+    surface: 'rgba(225, 166, 64, 0.17)',
   },
   {
     type: 'jira-issue-search',
@@ -79,6 +88,8 @@ const jiraNavItems: Array<{
     label: '이슈 검색',
     description: '전체 검색',
     icon: <SearchOutlinedIcon fontSize="small" />,
+    accent: '#ff7a8f',
+    surface: 'rgba(255, 122, 143, 0.16)',
   },
 ];
 
@@ -170,7 +181,16 @@ export default function HomePage() {
   const activeTab = contentTabs.find((tab) => tab.id === activeContentTabId);
 
   return (
-    <Box sx={{ minHeight: '100dvh', bgcolor: 'background.default', color: 'text.primary', display: 'flex', flexDirection: 'column' }}>
+    <Box
+      sx={{
+        minHeight: '100dvh',
+        bgcolor: 'background.default',
+        color: 'text.primary',
+        display: 'flex',
+        flexDirection: 'column',
+        pb: { xs: 9, md: 10 },
+      }}
+    >
       <Box
         component="header"
         sx={{
@@ -184,6 +204,7 @@ export default function HomePage() {
           flexWrap: { xs: 'wrap', md: 'nowrap' },
           borderBottom: `1px solid ${theme.palette.divider}`,
           bgcolor: 'background.paper',
+          backgroundImage: 'linear-gradient(90deg, rgba(101, 211, 196, 0.10), rgba(158, 188, 255, 0.08) 52%, rgba(225, 166, 64, 0.06))',
           position: 'sticky',
           top: 0,
           zIndex: theme.zIndex.appBar,
@@ -226,37 +247,6 @@ export default function HomePage() {
         </IconButton>
       </Box>
 
-      {currentPlatform.type === 'jira' && (
-        <Box
-          sx={{
-            display: { xs: 'flex', md: 'none' },
-            gap: 1,
-            px: 1.5,
-            py: 1,
-            overflowX: 'auto',
-            borderBottom: `1px solid ${theme.palette.divider}`,
-            bgcolor: 'background.paper',
-          }}
-        >
-          {jiraNavItems.map((item) => {
-            const selected = activeTab?.platformId === currentPlatform.id && activeTab.type === item.type;
-
-            return (
-              <Button
-                key={item.key}
-                size="small"
-                variant={selected ? 'contained' : 'outlined'}
-                startIcon={item.icon}
-                onClick={() => handleOpenContentTab(item.type, item.key, currentPlatform, `${currentPlatform.name} ${item.label}`)}
-                sx={{ flex: '0 0 auto' }}
-              >
-                {item.label}
-              </Button>
-            );
-          })}
-        </Box>
-      )}
-
       <Box sx={{ display: 'flex', minHeight: 0, flexGrow: 1 }}>
         <Box
           component="aside"
@@ -294,13 +284,21 @@ export default function HomePage() {
                     selected={selected}
                     onClick={() => handleOpenContentTab(item.type, item.key, currentPlatform, `${currentPlatform.name} ${item.label}`)}
                     sx={{
-                      borderRadius: 1.5,
+                      borderRadius: 1,
                       minHeight: 58,
                       alignItems: 'flex-start',
+                      border: '1px solid transparent',
+                      transition: 'transform 160ms ease, background-color 160ms ease, border-color 160ms ease',
+                      '&:hover': {
+                        transform: 'translateX(2px)',
+                        borderColor: item.accent,
+                        bgcolor: item.surface,
+                      },
                       '&.Mui-selected': {
-                        bgcolor: 'rgba(34, 102, 91, 0.11)',
-                        color: 'primary.main',
-                        '&:hover': { bgcolor: 'rgba(34, 102, 91, 0.16)' },
+                        bgcolor: item.surface,
+                        color: item.accent,
+                        borderColor: item.accent,
+                        '&:hover': { bgcolor: item.surface },
                       },
                     }}
                   >
@@ -330,6 +328,7 @@ export default function HomePage() {
             p: { xs: 1.5, md: 2.5 },
             gap: 1.5,
             overflow: 'hidden',
+            pb: { xs: 1, md: 2 },
           }}
         >
           {contentTabs.length > 0 && (
@@ -340,6 +339,7 @@ export default function HomePage() {
                 overflow: 'hidden',
                 borderColor: 'divider',
                 bgcolor: 'background.paper',
+                animation: 'tasker-rise-in 220ms ease-out',
               }}
             >
               <Box
@@ -377,10 +377,10 @@ export default function HomePage() {
                       borderRadius: 1,
                       flex: '0 0 auto',
                       cursor: 'pointer',
-                      bgcolor: activeContentTabId === tab.id ? 'rgba(34, 102, 91, 0.11)' : 'transparent',
+                      bgcolor: activeContentTabId === tab.id ? 'rgba(101, 211, 196, 0.14)' : 'transparent',
                       color: activeContentTabId === tab.id ? 'primary.main' : 'text.secondary',
                       '&:hover': {
-                        bgcolor: activeContentTabId === tab.id ? 'rgba(34, 102, 91, 0.16)' : 'action.hover',
+                        bgcolor: activeContentTabId === tab.id ? 'rgba(101, 211, 196, 0.2)' : 'action.hover',
                       },
                     }}
                   >
@@ -415,6 +415,8 @@ export default function HomePage() {
                   flexDirection: 'column',
                   justifyContent: 'center',
                   borderColor: 'divider',
+                  backgroundImage: 'linear-gradient(135deg, rgba(101, 211, 196, 0.12), transparent 44%, rgba(225, 166, 64, 0.10))',
+                  animation: 'tasker-rise-in 260ms ease-out',
                 }}
               >
                 <Typography variant="h4">작업할 뷰를 선택하세요</Typography>
@@ -428,6 +430,11 @@ export default function HomePage() {
                       variant="outlined"
                       startIcon={item.icon}
                       onClick={() => handleOpenContentTab(item.type, item.key, currentPlatform, `${currentPlatform.name} ${item.label}`)}
+                      sx={{
+                        borderColor: item.accent,
+                        color: item.accent,
+                        bgcolor: item.surface,
+                      }}
                     >
                       {item.label}
                     </Button>
@@ -458,6 +465,67 @@ export default function HomePage() {
           </Box>
         </Box>
       </Box>
+
+      {currentPlatform.type === 'jira' && (
+        <Box
+          component="nav"
+          aria-label="빠른 보기 이동"
+          sx={{
+            position: 'fixed',
+            left: '50%',
+            bottom: { xs: 10, md: 16 },
+            transform: 'translateX(-50%)',
+            zIndex: theme.zIndex.appBar + 1,
+            display: 'grid',
+            gridTemplateColumns: 'repeat(4, minmax(0, 1fr))',
+            gap: 0.5,
+            width: { xs: 'calc(100% - 24px)', sm: 480 },
+            p: 0.75,
+            border: '1px solid',
+            borderColor: 'divider',
+            borderRadius: 1,
+            bgcolor: 'rgba(16, 32, 29, 0.88)',
+            boxShadow: '0 18px 52px rgba(0, 0, 0, 0.24)',
+            backdropFilter: 'blur(14px)',
+            animation: 'tasker-rise-in 240ms ease-out',
+          }}
+        >
+          {jiraNavItems.map((item) => {
+            const selected = activeTab?.platformId === currentPlatform.id && activeTab.type === item.type;
+
+            return (
+              <Tooltip key={item.key} title={item.description} arrow>
+                <Button
+                  aria-pressed={selected}
+                  size="small"
+                  startIcon={item.icon}
+                  onClick={() => handleOpenContentTab(item.type, item.key, currentPlatform, `${currentPlatform.name} ${item.label}`)}
+                  sx={{
+                    minWidth: 0,
+                    px: { xs: 0.75, sm: 1.25 },
+                    color: selected ? '#10201d' : '#eef3ef',
+                    bgcolor: selected ? item.accent : 'transparent',
+                    border: '1px solid',
+                    borderColor: selected ? item.accent : 'rgba(238, 243, 239, 0.12)',
+                    animation: selected ? 'tasker-soft-pulse 1800ms ease-in-out infinite' : 'none',
+                    '& .MuiButton-startIcon': {
+                      mr: { xs: 0, sm: 0.75 },
+                    },
+                    '&:hover': {
+                      bgcolor: selected ? item.accent : 'rgba(238, 243, 239, 0.08)',
+                      borderColor: item.accent,
+                    },
+                  }}
+                >
+                  <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>
+                    {item.label}
+                  </Box>
+                </Button>
+              </Tooltip>
+            );
+          })}
+        </Box>
+      )}
     </Box>
   );
 }

@@ -149,6 +149,8 @@ export default function WelcomePage() {
             gridTemplateColumns: { xs: '1fr', md: '0.85fr 1.15fr' },
             gap: { xs: 3, md: 4 },
             alignItems: 'start',
+            backgroundImage: 'linear-gradient(135deg, rgba(101, 211, 196, 0.13), transparent 38%, rgba(158, 188, 255, 0.10) 72%, rgba(225, 166, 64, 0.11))',
+            animation: 'tasker-rise-in 260ms ease-out',
           }}
         >
           <Box>
@@ -160,7 +162,12 @@ export default function WelcomePage() {
               Tasker Tasker는 오래된 Jira 환경도 더 정돈된 작업 콘솔로 다루기 위한 앱입니다. 먼저 demo로 화면 흐름을 확인하거나, 로컬에서 실제 Jira를 연결하세요.
             </Typography>
             <Stack spacing={1.25} sx={{ mt: 3 }}>
-              <Button variant="contained" fullWidth onClick={handleStartDemo}>
+              <Button
+                variant="contained"
+                fullWidth
+                onClick={handleStartDemo}
+                sx={{ bgcolor: '#65d3c4', color: '#10201d', '&:hover': { bgcolor: '#55c5b5' } }}
+              >
                 데모 Jira로 바로 시작
               </Button>
               <Alert severity="info">
@@ -169,7 +176,7 @@ export default function WelcomePage() {
             </Stack>
           </Box>
 
-          <Box>
+          <Box sx={{ borderLeft: { md: '1px solid' }, borderColor: 'divider', pl: { md: 3 } }}>
         <Stepper activeStep={activeStep} orientation="vertical">
           {steps.map((step, index) => (
             <Step key={step.label}>
