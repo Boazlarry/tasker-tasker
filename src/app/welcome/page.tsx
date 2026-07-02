@@ -19,9 +19,11 @@ import {
   MenuItem,
   CircularProgress,
   Alert,
+  Stack,
 } from '@mui/material';
 import { usePlatformManager } from '../../hooks/usePlatformManager';
 import { MOCK_JIRA_URL } from '../../lib/mockJira';
+import BrandMark from '../../components/BrandMark';
 
 const steps = [
   { label: '플랫폼 선택', description: `연동할 플랫폼 종류를 선택하세요.` },
@@ -136,25 +138,38 @@ export default function WelcomePage() {
   };
 
   return (
-    <Container maxWidth="sm">
-      <Paper sx={{ mt: { xs: 2, sm: 4 }, p: { xs: 2, sm: 4 } }}>
-        <Typography variant="h4" component="h1" align="center" gutterBottom>
-          Tasker 시작하기
-        </Typography>
-        <Typography align="center" color="text.secondary" sx={{ mb: 4 }}>
-          첫 번째 작업 플랫폼을 연동하여 생산성을 높여보세요.
-        </Typography>
-        <Button
+    <Box sx={{ minHeight: '100dvh', bgcolor: 'background.default', display: 'grid', placeItems: 'center', p: 2 }}>
+      <Container maxWidth="md">
+        <Paper
           variant="outlined"
-          fullWidth
-          onClick={handleStartDemo}
-          sx={{ mb: 3 }}
+          sx={{
+            p: { xs: 2.5, md: 4 },
+            borderColor: 'divider',
+            display: 'grid',
+            gridTemplateColumns: { xs: '1fr', md: '0.85fr 1.15fr' },
+            gap: { xs: 3, md: 4 },
+            alignItems: 'start',
+          }}
         >
-          데모 Jira로 바로 시작
-        </Button>
-        <Alert severity="info" sx={{ mb: 3 }}>
-          Vercel 배포본은 mock 확인용입니다. 실제 Jira 크레덴셜은 로컬 실행 또는 이후 Tauri 보안 저장소 흐름에서만 사용하세요.
-        </Alert>
+          <Box>
+            <BrandMark />
+            <Typography variant="h4" component="h1" sx={{ mt: 4 }}>
+              로컬 우선 Jira 워크스페이스
+            </Typography>
+            <Typography color="text.secondary" sx={{ mt: 1.5, lineHeight: 1.7 }}>
+              Tasker Tasker는 오래된 Jira 환경도 더 정돈된 작업 콘솔로 다루기 위한 앱입니다. 먼저 demo로 화면 흐름을 확인하거나, 로컬에서 실제 Jira를 연결하세요.
+            </Typography>
+            <Stack spacing={1.25} sx={{ mt: 3 }}>
+              <Button variant="contained" fullWidth onClick={handleStartDemo}>
+                데모 Jira로 바로 시작
+              </Button>
+              <Alert severity="info">
+                Vercel 배포본은 mock 확인용입니다. 실제 Jira 크레덴셜은 로컬 실행 또는 이후 Tauri 보안 저장소 흐름에서만 사용하세요.
+              </Alert>
+            </Stack>
+          </Box>
+
+          <Box>
         <Stepper activeStep={activeStep} orientation="vertical">
           {steps.map((step, index) => (
             <Step key={step.label}>
@@ -185,7 +200,9 @@ export default function WelcomePage() {
             </Step>
           ))}
         </Stepper>
-      </Paper>
-    </Container>
+          </Box>
+        </Paper>
+      </Container>
+    </Box>
   );
 }

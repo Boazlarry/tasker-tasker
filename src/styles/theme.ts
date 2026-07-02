@@ -1,5 +1,4 @@
 import { createTheme, responsiveFontSizes, ThemeOptions } from '@mui/material/styles';
-import { ChipPropsColorOverrides } from '@mui/material/Chip';
 
 declare module '@mui/material/styles' {
   interface Palette {
@@ -31,14 +30,82 @@ export const getCustomColors = () => {
 };
 
 const baseThemeOptions: ThemeOptions = {
+  shape: {
+    borderRadius: 8,
+  },
   typography: {
     fontFamily: '"Pretendard", -apple-system, BlinkMacSystemFont, system-ui, Roboto, "Helvetica Neue", "Segoe UI", "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", sans-serif',
+    h4: {
+      fontWeight: 800,
+      letterSpacing: 0,
+    },
+    h5: {
+      fontWeight: 750,
+      letterSpacing: 0,
+    },
+    h6: {
+      fontWeight: 750,
+      letterSpacing: 0,
+    },
+    button: {
+      fontWeight: 700,
+      letterSpacing: 0,
+      textTransform: 'none',
+    },
   },
   components: {
+    MuiAppBar: {
+      styleOverrides: {
+        root: {
+          boxShadow: 'none',
+        },
+      },
+    },
+    MuiButton: {
+      defaultProps: {
+        disableElevation: true,
+      },
+      styleOverrides: {
+        root: {
+          borderRadius: 8,
+        },
+      },
+    },
+    MuiCard: {
+      styleOverrides: {
+        root: {
+          boxShadow: 'none',
+        },
+      },
+    },
     MuiDrawer: {
       styleOverrides: {
         paper: {
           borderRight: 'none',
+        },
+      },
+    },
+    MuiPaper: {
+      styleOverrides: {
+        root: {
+          backgroundImage: 'none',
+        },
+      },
+    },
+    MuiTableCell: {
+      styleOverrides: {
+        head: {
+          fontWeight: 800,
+        },
+      },
+    },
+    MuiTab: {
+      styleOverrides: {
+        root: {
+          letterSpacing: 0,
+          textTransform: 'none',
+          fontWeight: 700,
+          minHeight: 40,
         },
       },
     },
@@ -50,31 +117,33 @@ export const lightThemeOptions: ThemeOptions = {
   palette: {
     mode: 'light',
     primary: {
-      main: getCustomColors().primary || '#3f51b5', // Main Blue
+      main: '#22665b',
+      contrastText: '#ffffff',
     },
     secondary: {
-      main: getCustomColors().secondary || '#673ab7', // Main Purple
+      main: '#4f658b',
+      contrastText: '#ffffff',
     },
     background: {
-      default: '#f4f6f8',
+      default: '#f6f7f4',
       paper: '#ffffff',
     },
     text: {
-      primary: '#212121',
-      secondary: '#616161',
+      primary: '#1f2933',
+      secondary: '#667085',
     },
-    // Custom Semantic Colors
     positive: {
-      main: getCustomColors().positive || '#1976d2', // Blue
+      main: '#2f7d52',
       contrastText: '#ffffff',
     },
     important: {
-      main: getCustomColors().important || '#ffc107', // Yellow
-      contrastText: '#000000',
+      main: '#b7791f',
+      contrastText: '#ffffff',
     },
     error: {
-      main: getCustomColors().error || '#d32f2f', // Overriding default error with a magenta-like red for better visibility
+      main: '#c2413d',
     },
+    divider: '#d9ded8',
   },
 };
 
@@ -83,31 +152,33 @@ export const darkThemeOptions: ThemeOptions = {
   palette: {
     mode: 'dark',
     primary: {
-      main: getCustomColors().primary || '#7986cb', // Lighter Blue for dark mode
+      main: '#5fb7a7',
+      contrastText: '#10201d',
     },
     secondary: {
-      main: getCustomColors().secondary || '#9575cd', // Lighter Purple for dark mode
+      main: '#9bb5df',
+      contrastText: '#111827',
     },
     background: {
-      default: '#121212',
-      paper: '#1e1e1e',
+      default: '#111614',
+      paper: '#18201d',
     },
     text: {
-      primary: '#e0e0e0',
-      secondary: '#bdbdbd',
+      primary: '#eef3ef',
+      secondary: '#a9b5ad',
     },
-    // Custom Semantic Colors
     positive: {
-      main: getCustomColors().positive || '#42a5f5', // Lighter Blue
-      contrastText: '#000000',
+      main: '#66c18d',
+      contrastText: '#102016',
     },
     important: {
-      main: getCustomColors().important || '#ffca28', // Lighter Yellow
-      contrastText: '#000000',
+      main: '#d8a23a',
+      contrastText: '#1f1605',
     },
     error: {
-      main: getCustomColors().error || '#f44336', // Magenta-like Red
+      main: '#f07167',
     },
+    divider: '#31413b',
   },
 };
 

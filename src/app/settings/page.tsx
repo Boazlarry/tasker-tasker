@@ -26,14 +26,19 @@ import {
   MenuItem,
   Select,
   InputLabel,
+  Stack,
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
 import AddIcon from '@mui/icons-material/Add';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import { useRouter } from 'next/navigation';
 import { useThemeContext } from '../../context/ThemeContext';
 import { usePlatformManager, Platform } from '../../hooks/usePlatformManager';
+import BrandMark from '../../components/BrandMark';
 
 export default function SettingsPage() {
+  const router = useRouter();
   const { themeMode, setThemeMode } = useThemeContext();
   const { platforms, addPlatform, updatePlatform, deletePlatform } = usePlatformManager();
 
@@ -56,11 +61,11 @@ export default function SettingsPage() {
 
   useEffect(() => {
     // Load custom colors from localStorage or use defaults
-    setCustomPrimary(localStorage.getItem('customPrimaryColor') || '#3f51b5');
-    setCustomSecondary(localStorage.getItem('customSecondaryColor') || '#673ab7');
-    setCustomPositive(localStorage.getItem('customPositiveColor') || '#1976d2');
-    setCustomImportant(localStorage.getItem('customImportantColor') || '#ffc107');
-    setCustomError(localStorage.getItem('customErrorColor') || '#d32f2f');
+    setCustomPrimary(localStorage.getItem('customPrimaryColor') || '#22665b');
+    setCustomSecondary(localStorage.getItem('customSecondaryColor') || '#4f658b');
+    setCustomPositive(localStorage.getItem('customPositiveColor') || '#2f7d52');
+    setCustomImportant(localStorage.getItem('customImportantColor') || '#b7791f');
+    setCustomError(localStorage.getItem('customErrorColor') || '#c2413d');
   }, []);
 
   const handleOpenAddPlatformDialog = () => {
@@ -113,28 +118,43 @@ export default function SettingsPage() {
   };
 
   return (
-    <Container maxWidth="md">
-      <Paper sx={{ mt: 4, p: 4 }}>
-        <Typography variant="h4" component="h1" gutterBottom>
-          설정
-        </Typography>
-
-        <Divider sx={{ my: 3 }} />
-
-        {/* Platform Management */}
-        <Box component="section" sx={{ mb: 4 }}>
-          <Typography variant="h5" component="h2" gutterBottom>
-            플랫폼 관리
+    <Box sx={{ minHeight: '100dvh', bgcolor: 'background.default', py: { xs: 2, md: 4 } }}>
+      <Container maxWidth="lg">
+        <Stack direction={{ xs: 'column', sm: 'row' }} alignItems={{ xs: 'flex-start', sm: 'center' }} justifyContent="space-between" spacing={2} sx={{ mb: 3 }}>
+          <BrandMark />
+          <Button startIcon={<ArrowBackIcon />} onClick={() => router.push('/')}>
+            워크스페이스로 돌아가기
+          </Button>
+        </Stack>
+        <Paper variant="outlined" sx={{ p: { xs: 2.5, md: 3 }, borderColor: 'divider' }}>
+          <Typography variant="h4" component="h1">
+            설정
           </Typography>
+          <Typography color="text.secondary" sx={{ mt: 1 }}>
+            로컬 플랫폼 연결과 앱 표시 방식을 관리합니다.
+          </Typography>
+
+          <Divider sx={{ my: 3 }} />
+
+          <Box component="section" sx={{ mb: 4 }}>
+            <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'stretch', sm: 'center' }} spacing={2} sx={{ mb: 2 }}>
+              <Box>
+                <Typography variant="h5" component="h2">
+                  플랫폼 관리
+                </Typography>
+                <Typography color="text.secondary" sx={{ mt: 0.5 }}>
+                  크레덴셜은 이 브라우저의 로컬 저장소에만 저장됩니다.
+                </Typography>
+              </Box>
           <Button
             variant="contained"
             startIcon={<AddIcon />}
             onClick={handleOpenAddPlatformDialog}
-            sx={{ mb: 2 }}
           >
             새 플랫폼 추가
           </Button>
-          <List component={Paper} sx={{ bgcolor: 'background.paper' }}>
+            </Stack>
+          <List component={Paper} variant="outlined" sx={{ bgcolor: 'background.paper', borderColor: 'divider' }}>
             {platforms.length === 0 ? (
               <ListItem>
                 <ListItemText primary="등록된 플랫폼이 없습니다." />
@@ -158,7 +178,7 @@ export default function SettingsPage() {
               ))
             )}
           </List>
-        </Box>
+          </Box>
 
         <Divider sx={{ my: 3 }} />
 
@@ -236,7 +256,8 @@ export default function SettingsPage() {
             커스텀 색상 저장
           </Button>
         </Box>
-      </Paper>
+        </Paper>
+      </Container>
 
       {/* Platform Add/Edit Dialog */}
       <Dialog open={openPlatformDialog} onClose={handleClosePlatformDialog}>
@@ -290,6 +311,6 @@ export default function SettingsPage() {
           </Button>
         </DialogActions>
       </Dialog>
-    </Container>
+    </Box>
   );
 }

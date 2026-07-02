@@ -22,16 +22,18 @@ export const useThemeContext = () => {
 
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [themeMode, setThemeMode] = useState<ThemeMode>('system');
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     const savedTheme = localStorage.getItem('themeMode') as ThemeMode | null;
     if (savedTheme) {
       setThemeMode(savedTheme);
     }
+    setMounted(true);
   }, []);
 
   const activeTheme = useMemo(() => {
-    const customColors = getCustomColors();
+    const customColors = mounted ? getCustomColors() : {};
 
     const currentLightThemeOptions = {
       ...lightThemeOptions,
@@ -58,14 +60,16 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     };
 
     let themeToApply;
-    if (themeMode === 'system') {
+    if (themeMode === 'system' && mounted) {
       const prefersDarkMode = typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches;
       themeToApply = prefersDarkMode ? currentDarkThemeOptions : currentLightThemeOptions;
+    } else if (themeMode === 'system') {
+      themeToApply = currentLightThemeOptions;
     } else {
       themeToApply = themeMode === 'light' ? currentLightThemeOptions : currentDarkThemeOptions;
     }
     return responsiveFontSizes(createTheme(themeToApply));
-  }, [themeMode]);
+  }, [mounted, themeMode]);
 
   const contextValue = useMemo(() => ({
     themeMode,
