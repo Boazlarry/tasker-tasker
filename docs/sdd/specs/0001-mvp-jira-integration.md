@@ -95,6 +95,8 @@ Provide a Jira 7.x workspace where a user can register a Jira server, inspect wo
 - API routes should return consistent JSON errors and preserve meaningful Jira status codes where possible.
 - Browser UI must remain usable without a configured platform by routing to onboarding.
 - Jira-rendered HTML must be treated as untrusted unless it is sanitized or intentionally trusted by an explicit local-only policy.
+- Jira issue list and search requests should use Jira REST pagination (`startAt`, `maxResults`) and request only needed fields where possible.
+- Aggregate MVP views such as team and kanban must avoid per-project fan-out or unbounded full-instance issue reads. Bounded recent-issue samples are acceptable until a more exact Jira source is specified.
 
 ## Acceptance Criteria
 
@@ -119,3 +121,4 @@ Provide a Jira 7.x workspace where a user can register a Jira server, inspect wo
 - First editable field set and exact UX for create/edit forms.
 - Exact Jira source for team data.
 - Exact kanban board source: workflow status, Jira agile board API, or configurable columns.
+- Long-term paging/cache strategy for large Jira instances.

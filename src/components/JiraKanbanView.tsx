@@ -20,8 +20,12 @@ interface KanbanIssue {
   };
 }
 
+const KANBAN_ISSUE_LIMIT = 80;
+const KANBAN_ISSUE_FIELDS = 'summary,status,assignee';
+
 export default function JiraKanbanView({ jiraPlatform }: JiraKanbanViewProps) {
   const [issues, setIssues] = useState<KanbanIssue[]>([]);
+  const [issueTotal, setIssueTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -29,19 +33,26 @@ export default function JiraKanbanView({ jiraPlatform }: JiraKanbanViewProps) {
     const fetchKanbanIssues = async () => {
       setLoading(true);
       setError(null);
+      setIssues([]);
+      setIssueTotal(0);
 
       try {
         const headers = {
           Authorization: createBasicAuthHeader(jiraPlatform.auth.username, jiraPlatform.auth.apiToken),
           'X-Jira-Url': jiraPlatform.url,
         };
-        const projectsResponse = await axios.get('/api/jira/projects', { headers });
-        const projectKeys = projectsResponse.data.map((project: { key: string }) => project.key);
-        const issueResponses = await Promise.all(
-          projectKeys.map((projectKey: string) => axios.get(`/api/jira/issues?projectKey=${projectKey}`, { headers }))
-        );
+        const response = await axios.get('/api/jira/issues', {
+          headers,
+          params: {
+            jql: 'ORDER BY updated DESC',
+            startAt: 0,
+            maxResults: KANBAN_ISSUE_LIMIT,
+            fields: KANBAN_ISSUE_FIELDS,
+          },
+        });
 
-        setIssues(issueResponses.flatMap((response) => response.data.issues || []));
+        setIssues(response.data.issues || []);
+        setIssueTotal(response.data.total ?? response.data.issues?.length ?? 0);
       } catch (err: any) {
         setError(err.response?.data?.error || '칸반 데이터를 불러오지 못했습니다.');
       } finally {
@@ -60,6 +71,7 @@ export default function JiraKanbanView({ jiraPlatform }: JiraKanbanViewProps) {
       return acc;
     }, {});
   }, [issues]);
+  const sampledIssueCount = loading ? KANBAN_ISSUE_LIMIT : issues.length;
 
   return (
     <Box sx={{ p: { xs: 2, md: 3 }, height: '100%', animation: 'tasker-rise-in 220ms ease-out' }}>
@@ -69,10 +81,14 @@ export default function JiraKanbanView({ jiraPlatform }: JiraKanbanViewProps) {
             {jiraPlatform.name} - 칸반보드
           </Typography>
           <Typography color="text.secondary" sx={{ mt: 0.5 }}>
-            워크플로 상태별로 이슈를 묶어 봅니다.
+            최근 업데이트 이슈 {sampledIssueCount}개까지 워크플로 상태별로 묶어 봅니다.
           </Typography>
         </Box>
-        <Chip label={`${issues.length} issues`} size="small" color="important" />
+        <Chip
+          label={issueTotal > issues.length ? `${issues.length} / ${issueTotal} issues` : `${issues.length} issues`}
+          size="small"
+          color="important"
+        />
       </Stack>
       {loading ? (
         <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 2 }}>

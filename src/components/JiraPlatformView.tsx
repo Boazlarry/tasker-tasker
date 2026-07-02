@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef, type ChangeEvent } from 'react';
 import {
   Alert,
   Avatar,
@@ -63,9 +63,12 @@ interface JiraPlatformViewProps {
   ) => void;
 }
 
+const ISSUE_LIST_FIELDS = 'summary,issuetype,reporter,status,assignee';
+
 export default function JiraPlatformView({ jiraPlatform, onOpenContentTab }: JiraPlatformViewProps) {
   const [projects, setProjects] = useState<Project[]>([]);
   const [issues, setIssues] = useState<Issue[]>([]);
+  const [issueTotal, setIssueTotal] = useState(0);
   const [selectedProject, setSelectedProject] = useState<string | null>(null);
   const [loadingProjects, setLoadingProjects] = useState(true);
   const [loadingIssues, setLoadingIssues] = useState(false);
@@ -79,32 +82,49 @@ export default function JiraPlatformView({ jiraPlatform, onOpenContentTab }: Jir
   const [createDescription, setCreateDescription] = useState('');
   const [createIssueType, setCreateIssueType] = useState('Task');
   const [savingIssue, setSavingIssue] = useState(false);
+  const issueRowsPerPageRef = useRef(issueRowsPerPage);
 
   const authorization = createBasicAuthHeader(jiraPlatform.auth.username, jiraPlatform.auth.apiToken);
 
-  const handleProjectClick = useCallback(async (projectKey: string) => {
-    setSelectedProject(projectKey);
-    localStorage.setItem(`lastSelectedProject:${jiraPlatform.id}`, projectKey);
-    localStorage.setItem('lastSelectedProject', projectKey);
+  useEffect(() => {
+    issueRowsPerPageRef.current = issueRowsPerPage;
+  }, [issueRowsPerPage]);
+
+  const loadProjectIssues = useCallback(async (projectKey: string, nextPage: number, nextRowsPerPage: number) => {
     setLoadingIssues(true);
     setIssues([]);
-    setIssuePage(0);
+    setIssueTotal(0);
     setError(null);
 
     try {
-      const response = await axios.get(`/api/jira/issues?projectKey=${projectKey}`, {
+      const response = await axios.get('/api/jira/issues', {
         headers: {
           Authorization: authorization,
           'X-Jira-Url': jiraPlatform.url,
         },
+        params: {
+          projectKey,
+          startAt: nextPage * nextRowsPerPage,
+          maxResults: nextRowsPerPage,
+          fields: ISSUE_LIST_FIELDS,
+        },
       });
       setIssues(response.data.issues || []);
+      setIssueTotal(response.data.total ?? response.data.issues?.length ?? 0);
     } catch (err: any) {
       setError(err.response?.data?.error || `'${projectKey}' 프로젝트의 이슈를 불러오는 데 실패했습니다.`);
     } finally {
       setLoadingIssues(false);
     }
-  }, [authorization, jiraPlatform.id, jiraPlatform.url]);
+  }, [authorization, jiraPlatform.url]);
+
+  const handleProjectClick = useCallback((projectKey: string) => {
+    setSelectedProject(projectKey);
+    localStorage.setItem(`lastSelectedProject:${jiraPlatform.id}`, projectKey);
+    localStorage.setItem('lastSelectedProject', projectKey);
+    setIssuePage(0);
+    void loadProjectIssues(projectKey, 0, issueRowsPerPage);
+  }, [issueRowsPerPage, jiraPlatform.id, loadProjectIssues]);
 
   const fetchProjects = useCallback(async () => {
     setLoadingProjects(true);
@@ -125,17 +145,26 @@ export default function JiraPlatformView({ jiraPlatform, onOpenContentTab }: Jir
         localStorage.getItem(`lastSelectedProject:${jiraPlatform.id}`) ||
         localStorage.getItem('lastSelectedProject');
 
-      if (lastSelectedProject && fetchedProjects.some((project) => project.key === lastSelectedProject)) {
-        handleProjectClick(lastSelectedProject);
-      } else if (fetchedProjects[0]) {
-        handleProjectClick(fetchedProjects[0].key);
+      const projectToSelect =
+        lastSelectedProject && fetchedProjects.some((project) => project.key === lastSelectedProject)
+          ? lastSelectedProject
+          : fetchedProjects[0]?.key;
+
+      if (projectToSelect) {
+        setSelectedProject(projectToSelect);
+        setIssuePage(0);
+        void loadProjectIssues(projectToSelect, 0, issueRowsPerPageRef.current);
+      } else {
+        setSelectedProject(null);
+        setIssues([]);
+        setIssueTotal(0);
       }
     } catch (err: any) {
       setError(err.response?.data?.error || '프로젝트를 불러오는 데 실패했습니다.');
     } finally {
       setLoadingProjects(false);
     }
-  }, [authorization, handleProjectClick, jiraPlatform.id, jiraPlatform.url]);
+  }, [authorization, jiraPlatform.id, jiraPlatform.url, loadProjectIssues]);
 
   useEffect(() => {
     fetchProjects();
@@ -148,13 +177,31 @@ export default function JiraPlatformView({ jiraPlatform, onOpenContentTab }: Jir
   }, [projectPage, projectRowsPerPage, projects.length]);
 
   useEffect(() => {
-    if (issuePage > 0 && issuePage * issueRowsPerPage >= issues.length) {
-      setIssuePage(Math.max(0, Math.ceil(issues.length / issueRowsPerPage) - 1));
+    if (issuePage > 0 && issuePage * issueRowsPerPage >= issueTotal) {
+      setIssuePage(Math.max(0, Math.ceil(issueTotal / issueRowsPerPage) - 1));
     }
-  }, [issuePage, issueRowsPerPage, issues.length]);
+  }, [issuePage, issueRowsPerPage, issueTotal]);
 
   const handleIssueClick = (issue: Issue) => {
     onOpenContentTab('jira-issue-detail', issue.key, jiraPlatform, issue.fields.summary);
+  };
+
+  const handleIssuePageChange = (_event: unknown, nextPage: number) => {
+    setIssuePage(nextPage);
+
+    if (selectedProject) {
+      void loadProjectIssues(selectedProject, nextPage, issueRowsPerPage);
+    }
+  };
+
+  const handleIssueRowsPerPageChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const nextRowsPerPage = Number(event.target.value);
+    setIssueRowsPerPage(nextRowsPerPage);
+    setIssuePage(0);
+
+    if (selectedProject) {
+      void loadProjectIssues(selectedProject, 0, nextRowsPerPage);
+    }
   };
 
   const handleCreateIssue = async () => {
@@ -184,7 +231,10 @@ export default function JiraPlatformView({ jiraPlatform, onOpenContentTab }: Jir
       );
 
       const createdIssue: Issue = response.data;
-      setIssues((prevIssues) => [createdIssue, ...prevIssues]);
+      setIssues((prevIssues) =>
+        issuePage === 0 ? [createdIssue, ...prevIssues].slice(0, issueRowsPerPage) : prevIssues
+      );
+      setIssueTotal((prevTotal) => prevTotal + 1);
       setCreateDialogOpen(false);
       setCreateSummary('');
       setCreateDescription('');
@@ -202,10 +252,7 @@ export default function JiraPlatformView({ jiraPlatform, onOpenContentTab }: Jir
     projectPage * projectRowsPerPage,
     projectPage * projectRowsPerPage + projectRowsPerPage
   );
-  const visibleIssues = issues.slice(
-    issuePage * issueRowsPerPage,
-    issuePage * issueRowsPerPage + issueRowsPerPage
-  );
+  const visibleIssues = issues;
 
   return (
     <Box sx={{ minHeight: '100%', display: 'grid', gridTemplateColumns: { xs: '1fr', lg: '280px minmax(0, 1fr)' }, gap: 2 }}>
@@ -315,7 +362,7 @@ export default function JiraPlatformView({ jiraPlatform, onOpenContentTab }: Jir
               {selectedProjectName || '프로젝트를 선택하면 이슈 목록이 표시됩니다.'}
             </Typography>
           </Box>
-          <Chip label={`${issues.length} issues`} size="small" variant="outlined" />
+          <Chip label={`${issueTotal} issues`} size="small" variant="outlined" />
           <Button
             variant="contained"
             startIcon={<AddIcon />}
@@ -343,7 +390,7 @@ export default function JiraPlatformView({ jiraPlatform, onOpenContentTab }: Jir
                 </Stack>
               )}
 
-              {!loadingIssues && issues.length > 0 && (
+              {!loadingIssues && visibleIssues.length > 0 && (
                 <Stack spacing={1.25}>
                   {visibleIssues.map((issue) => (
                     <Box
@@ -392,24 +439,21 @@ export default function JiraPlatformView({ jiraPlatform, onOpenContentTab }: Jir
                 </Stack>
               )}
 
-              {!loadingIssues && issues.length > 0 && (
+              {!loadingIssues && issueTotal > 0 && (
                 <TablePagination
                   component="div"
-                  count={issues.length}
+                  count={issueTotal}
                   page={issuePage}
-                  onPageChange={(_, page) => setIssuePage(page)}
+                  onPageChange={handleIssuePageChange}
                   rowsPerPage={issueRowsPerPage}
-                  onRowsPerPageChange={(event) => {
-                    setIssueRowsPerPage(Number(event.target.value));
-                    setIssuePage(0);
-                  }}
+                  onRowsPerPageChange={handleIssueRowsPerPageChange}
                   rowsPerPageOptions={[5, 10, 25]}
                   labelRowsPerPage="이슈"
                   sx={{ mt: 1, mx: -1.5 }}
                 />
               )}
 
-              {!loadingIssues && issues.length === 0 && (
+              {!loadingIssues && issueTotal === 0 && (
                 <Box sx={{ py: 6, textAlign: 'center' }}>
                   <Typography variant="h6">이슈가 없습니다</Typography>
                   <Typography color="text.secondary" sx={{ mt: 0.5 }}>새 이슈를 생성하거나 다른 프로젝트를 선택하세요.</Typography>
@@ -467,7 +511,7 @@ export default function JiraPlatformView({ jiraPlatform, onOpenContentTab }: Jir
                       </TableCell>
                     </TableRow>
                   ))}
-                  {!loadingIssues && issues.length === 0 && (
+                  {!loadingIssues && issueTotal === 0 && (
                     <TableRow>
                       <TableCell colSpan={5}>
                         <Box sx={{ py: 6, textAlign: 'center' }}>
@@ -480,17 +524,14 @@ export default function JiraPlatformView({ jiraPlatform, onOpenContentTab }: Jir
                 </TableBody>
               </Table>
             </TableContainer>
-            {!loadingIssues && issues.length > 0 && (
+            {!loadingIssues && issueTotal > 0 && (
               <TablePagination
                 component="div"
-                count={issues.length}
+                count={issueTotal}
                 page={issuePage}
-                onPageChange={(_, page) => setIssuePage(page)}
+                onPageChange={handleIssuePageChange}
                 rowsPerPage={issueRowsPerPage}
-                onRowsPerPageChange={(event) => {
-                  setIssueRowsPerPage(Number(event.target.value));
-                  setIssuePage(0);
-                }}
+                onRowsPerPageChange={handleIssueRowsPerPageChange}
                 rowsPerPageOptions={[5, 10, 25]}
                 labelRowsPerPage="이슈"
                 sx={{ display: { xs: 'none', sm: 'block' }, borderTop: '1px solid', borderColor: 'divider' }}

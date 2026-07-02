@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState, type ChangeEvent } from 'react';
 import {
   Alert,
   Box,
@@ -39,33 +39,47 @@ interface SearchIssue {
   };
 }
 
+const SEARCH_ISSUE_FIELDS = 'summary,issuetype,reporter,status';
+
 export default function JiraIssueSearchView({ jiraPlatform }: JiraIssueSearchViewProps) {
   const [query, setQuery] = useState('');
   const [issues, setIssues] = useState<SearchIssue[]>([]);
+  const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(8);
 
-  const handleSearch = async () => {
-    if (!query.trim()) {
+  const handleSearch = async (nextPage = 0, nextRowsPerPage = rowsPerPage) => {
+    const trimmedQuery = query.trim();
+
+    if (!trimmedQuery) {
       setError('검색어를 입력해주세요.');
       return;
     }
 
     setLoading(true);
     setError(null);
+    setIssues([]);
+    setTotal(0);
 
     try {
-      const response = await axios.get(`/api/jira/issues?query=${encodeURIComponent(query.trim())}`, {
+      const response = await axios.get('/api/jira/issues', {
         headers: {
           Authorization: createBasicAuthHeader(jiraPlatform.auth.username, jiraPlatform.auth.apiToken),
           'X-Jira-Url': jiraPlatform.url,
         },
+        params: {
+          query: trimmedQuery,
+          startAt: nextPage * nextRowsPerPage,
+          maxResults: nextRowsPerPage,
+          fields: SEARCH_ISSUE_FIELDS,
+        },
       });
 
       setIssues(response.data.issues || []);
-      setPage(0);
+      setTotal(response.data.total ?? response.data.issues?.length ?? 0);
+      setPage(nextPage);
     } catch (err: any) {
       setError(err.response?.data?.error || '이슈 검색에 실패했습니다.');
     } finally {
@@ -73,13 +87,17 @@ export default function JiraIssueSearchView({ jiraPlatform }: JiraIssueSearchVie
     }
   };
 
-  const visibleIssues = issues.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
+  const handlePageChange = (_event: unknown, nextPage: number) => {
+    void handleSearch(nextPage, rowsPerPage);
+  };
 
-  useEffect(() => {
-    if (page > 0 && page * rowsPerPage >= issues.length) {
-      setPage(Math.max(0, Math.ceil(issues.length / rowsPerPage) - 1));
-    }
-  }, [issues.length, page, rowsPerPage]);
+  const handleRowsPerPageChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const nextRowsPerPage = Number(event.target.value);
+    setRowsPerPage(nextRowsPerPage);
+    void handleSearch(0, nextRowsPerPage);
+  };
+
+  const visibleIssues = issues;
 
   return (
     <Box sx={{ p: { xs: 2, md: 3 }, animation: 'tasker-rise-in 220ms ease-out' }}>
@@ -92,7 +110,7 @@ export default function JiraIssueSearchView({ jiraPlatform }: JiraIssueSearchVie
             검색 결과는 페이지 단위로 표시됩니다.
           </Typography>
         </Box>
-        <Chip label={`${issues.length} results`} size="small" color="important" />
+        <Chip label={`${total} results`} size="small" color="important" />
       </Stack>
       <Box sx={{ display: 'flex', gap: 1, mb: 2, flexDirection: { xs: 'column', sm: 'row' } }}>
         <TextField
@@ -100,11 +118,11 @@ export default function JiraIssueSearchView({ jiraPlatform }: JiraIssueSearchVie
           value={query}
           onChange={(event) => setQuery(event.target.value)}
           onKeyDown={(event) => {
-            if (event.key === 'Enter') handleSearch();
+            if (event.key === 'Enter') void handleSearch();
           }}
           fullWidth
         />
-        <Button variant="contained" startIcon={<SearchIcon />} onClick={handleSearch} disabled={loading}>
+        <Button variant="contained" startIcon={<SearchIcon />} onClick={() => void handleSearch()} disabled={loading}>
           검색
         </Button>
       </Box>
@@ -140,7 +158,7 @@ export default function JiraIssueSearchView({ jiraPlatform }: JiraIssueSearchVie
                   <TableCell><Typography noWrap>{issue.fields.reporter.displayName}</Typography></TableCell>
                 </TableRow>
               ))}
-              {!loading && !issues.length && (
+              {!loading && total === 0 && (
                 <TableRow>
                   <TableCell colSpan={5}>검색 결과가 없습니다.</TableCell>
                 </TableRow>
@@ -148,17 +166,14 @@ export default function JiraIssueSearchView({ jiraPlatform }: JiraIssueSearchVie
             </TableBody>
           </Table>
         </TableContainer>
-        {!loading && issues.length > 0 && (
+        {!loading && total > 0 && (
           <TablePagination
             component="div"
-            count={issues.length}
+            count={total}
             page={page}
-            onPageChange={(_, nextPage) => setPage(nextPage)}
+            onPageChange={handlePageChange}
             rowsPerPage={rowsPerPage}
-            onRowsPerPageChange={(event) => {
-              setRowsPerPage(Number(event.target.value));
-              setPage(0);
-            }}
+            onRowsPerPageChange={handleRowsPerPageChange}
             rowsPerPageOptions={[8, 16, 32]}
             labelRowsPerPage="결과"
             sx={{ borderTop: '1px solid', borderColor: 'divider' }}

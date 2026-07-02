@@ -34,8 +34,12 @@ interface TeamIssue {
   };
 }
 
+const TEAM_ISSUE_LIMIT = 80;
+const TEAM_ISSUE_FIELDS = 'reporter,assignee';
+
 export default function JiraTeamView({ jiraPlatform }: JiraTeamViewProps) {
   const [issues, setIssues] = useState<TeamIssue[]>([]);
+  const [issueTotal, setIssueTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(0);
@@ -45,19 +49,26 @@ export default function JiraTeamView({ jiraPlatform }: JiraTeamViewProps) {
     const fetchTeamContext = async () => {
       setLoading(true);
       setError(null);
+      setIssues([]);
+      setIssueTotal(0);
 
       try {
         const headers = {
           Authorization: createBasicAuthHeader(jiraPlatform.auth.username, jiraPlatform.auth.apiToken),
           'X-Jira-Url': jiraPlatform.url,
         };
-        const projectsResponse = await axios.get('/api/jira/projects', { headers });
-        const projectKeys = projectsResponse.data.map((project: { key: string }) => project.key);
-        const issueResponses = await Promise.all(
-          projectKeys.map((projectKey: string) => axios.get(`/api/jira/issues?projectKey=${projectKey}`, { headers }))
-        );
+        const response = await axios.get('/api/jira/issues', {
+          headers,
+          params: {
+            jql: 'ORDER BY updated DESC',
+            startAt: 0,
+            maxResults: TEAM_ISSUE_LIMIT,
+            fields: TEAM_ISSUE_FIELDS,
+          },
+        });
 
-        setIssues(issueResponses.flatMap((response) => response.data.issues || []));
+        setIssues(response.data.issues || []);
+        setIssueTotal(response.data.total ?? response.data.issues?.length ?? 0);
       } catch (err: any) {
         setError(err.response?.data?.error || '팀 정보를 불러오지 못했습니다.');
       } finally {
@@ -97,6 +108,7 @@ export default function JiraTeamView({ jiraPlatform }: JiraTeamViewProps) {
   }, [page, people.length, rowsPerPage]);
 
   const visiblePeople = people.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
+  const sampledIssueCount = loading ? TEAM_ISSUE_LIMIT : issues.length;
 
   return (
     <Box sx={{ p: { xs: 2, md: 3 }, animation: 'tasker-rise-in 220ms ease-out' }}>
@@ -106,10 +118,15 @@ export default function JiraTeamView({ jiraPlatform }: JiraTeamViewProps) {
             {jiraPlatform.name} - 팀 뷰
           </Typography>
           <Typography color="text.secondary" sx={{ mt: 0.5 }}>
-            담당/보고 이슈 기준으로 팀 컨텍스트를 집계합니다.
+            최근 업데이트 이슈 {sampledIssueCount}개까지 담당/보고 컨텍스트를 집계합니다.
           </Typography>
         </Box>
-        <Chip label={`${people.length} people`} size="small" color="secondary" />
+        <Stack direction="row" gap={1} flexWrap="wrap">
+          <Chip label={`${people.length} people`} size="small" color="secondary" />
+          {issueTotal > issues.length && (
+            <Chip label={`${issues.length} / ${issueTotal} issues`} size="small" variant="outlined" />
+          )}
+        </Stack>
       </Stack>
       {loading ? (
         <Paper variant="outlined" sx={{ p: 2, borderColor: 'divider' }}>
