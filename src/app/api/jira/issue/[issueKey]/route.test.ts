@@ -21,7 +21,7 @@ describe('GET /api/jira/issue/[issueKey]', () => {
   });
 
   it('requires Jira URL and authorization headers', async () => {
-    const response = await GET(request(), { params: { issueKey: 'TASK-1' } });
+    const response = await GET(request(), { params: Promise.resolve({ issueKey: 'TASK-1' }) });
 
     expect(response.status).toBe(400);
     expect(await response.json()).toEqual({ error: 'Jira URL or Authorization header is missing' });
@@ -37,7 +37,7 @@ describe('GET /api/jira/issue/[issueKey]', () => {
         Authorization: 'Basic abc',
         'X-Jira-Url': 'https://jira.example.com',
       }),
-      { params: { issueKey: 'TASK-1' } }
+      { params: Promise.resolve({ issueKey: 'TASK-1' }) }
     );
 
     expect(response.status).toBe(200);

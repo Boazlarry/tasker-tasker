@@ -4,9 +4,9 @@ import { getMockIssue, isMockJiraUrl, updateMockIssue } from '@/lib/mockJira';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { issueKey: string } }
+  { params }: { params: Promise<{ issueKey: string }> }
 ) {
-  const { issueKey } = params;
+  const { issueKey } = await params;
   const jiraUrl = request.headers.get('X-Jira-Url');
   const authorization = request.headers.get('Authorization');
 
@@ -52,9 +52,9 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { issueKey: string } }
+  { params }: { params: Promise<{ issueKey: string }> }
 ) {
-  const { issueKey } = params;
+  const { issueKey } = await params;
   const jiraUrl = request.headers.get('X-Jira-Url');
   const authorization = request.headers.get('Authorization');
 
