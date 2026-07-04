@@ -25,12 +25,13 @@ Tasker Tasker는 Jira 7.x 계열 환경을 우선 지원하는 로컬 우선 작
 
 | 영역 | 상태 | 현재 동작 |
 | --- | --- | --- |
-| 앱 셸 | 완료 | 루트 워크스페이스, 상단 플랫폼 탭, 왼쪽 Jira 내비게이션, 콘텐츠 탭, 닫을 수 있는 상세 탭, 설정 FAB가 있음. |
+| 앱 셸 | 완료 | 루트 워크스페이스, 상단 플랫폼 탭, 왼쪽 Jira 내비게이션, 콘텐츠 탭, 닫을 수 있는 상세 탭, 하단 플로팅 빠른 메뉴가 있음. 사이드바, 플로팅 메뉴, Jira 메뉴 노출은 로컬 설정으로 제어됨. |
 | 최초 실행 라우팅 | 완료 | 등록된 플랫폼이 없으면 루트 페이지에서 `/welcome`으로 이동함. |
 | 플랫폼 온보딩 | 부분 구현 | `/welcome`에서 플랫폼 타입, Jira URL, 사용자명, 토큰을 입력받음. 연결 테스트는 아직 mock임. |
 | 플랫폼 관리 | 완료 | `/settings`에서 로컬 플랫폼 정보를 추가, 수정, 삭제할 수 있음. |
 | 로컬 크레덴셜 저장 | 부분 구현 | Jira URL과 크레덴셜이 `tasker-platforms` 키로 브라우저 `localStorage`에 저장됨. 로컬 저장 조건은 만족하지만 보안 저장소는 아님. |
-| 테마 설정 | 완료 | 테마 모드와 커스텀 색상이 로컬에 저장되고 MUI 테마로 적용됨. |
+| 테마 설정 | 완료 | 테마 모드와 커스텀 색상이 로컬에 저장되고 MUI 테마로 적용됨. 배경색과 표면색도 사용자 지정 가능함. |
+| 워크스페이스 표시 설정 | 완료 | `/settings`에서 사이드바 표시, 하단 플로팅 빠른 메뉴 표시, Jira 메뉴 노출을 편집하고 미리보기로 확인할 수 있음. |
 | Jira 프로젝트 API | 완료 | `GET /api/jira/projects`가 Jira `GET /rest/api/2/project`를 프록시함. |
 | Jira 이슈 목록/검색 API | 완료 | `GET /api/jira/issues`가 `projectKey`, `query`, `jql`, `startAt`, `maxResults`, `fields`를 받아 Jira search를 제한된 페이지 단위로 프록시함. `maxResults`는 서버에서 최대 100으로 제한함. |
 | Jira 이슈 상세 API | 부분 구현 | `GET /api/jira/issue/{issueKey}`가 rendered fields와 changelog를 가져옴. Jira 댓글을 별도 원천으로 가져오지는 않음. |
@@ -62,7 +63,8 @@ Tasker Tasker는 Jira 7.x 계열 환경을 우선 지원하는 로컬 우선 작
 | --- | --- |
 | `tasker-platforms` | Jira URL과 크레덴셜을 포함한 플랫폼 정보 |
 | `themeMode` | 라이트, 다크, 시스템 테마 모드 |
-| `customPrimaryColor`, `customSecondaryColor`, `customPositiveColor`, `customImportantColor`, `customErrorColor` | 사용자 지정 테마 색상 |
+| `customPrimaryColor`, `customSecondaryColor`, `customPositiveColor`, `customImportantColor`, `customErrorColor`, `customBackgroundColor`, `customSurfaceColor` | 사용자 지정 테마 색상 |
+| `tasker-workspace-preferences` | 사이드바, 하단 플로팅 빠른 메뉴, Jira 메뉴 노출 설정 |
 | `lastSelectedProject` | 마지막으로 선택한 Jira 프로젝트 키. 이후 플랫폼별로 분리하는 것이 좋음. |
 
 ## 현재 API 표면

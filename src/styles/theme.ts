@@ -18,15 +18,66 @@ declare module "@mui/material/Chip" {
   }
 }
 
-export const getCustomColors = () => {
+export interface CustomThemeColors {
+  primary: string;
+  secondary: string;
+  positive: string;
+  important: string;
+  error: string;
+  background: string;
+  surface: string;
+}
+
+export const defaultCustomThemeColors: CustomThemeColors = {
+  primary: '#21665c',
+  secondary: '#3f63a2',
+  positive: '#2f7d52',
+  important: '#bd7622',
+  error: '#b94157',
+  background: '#f6f7f4',
+  surface: '#ffffff',
+};
+
+const customColorStorageKeys: Record<keyof CustomThemeColors, string> = {
+  primary: 'customPrimaryColor',
+  secondary: 'customSecondaryColor',
+  positive: 'customPositiveColor',
+  important: 'customImportantColor',
+  error: 'customErrorColor',
+  background: 'customBackgroundColor',
+  surface: 'customSurfaceColor',
+};
+
+export const getCustomColors = (): Partial<CustomThemeColors> => {
   if (typeof window === 'undefined') return {};
+
+  return Object.fromEntries(
+    Object.entries(customColorStorageKeys)
+      .map(([key, storageKey]) => [key, localStorage.getItem(storageKey)])
+      .filter(([, value]) => Boolean(value))
+  ) as Partial<CustomThemeColors>;
+};
+
+export const getCustomColorsWithDefaults = (
+  defaults: CustomThemeColors = defaultCustomThemeColors
+): CustomThemeColors => {
+  if (typeof window === 'undefined') return defaults;
+
   return {
-    primary: localStorage.getItem('customPrimaryColor') || undefined,
-    secondary: localStorage.getItem('customSecondaryColor') || undefined,
-    positive: localStorage.getItem('customPositiveColor') || undefined,
-    important: localStorage.getItem('customImportantColor') || undefined,
-    error: localStorage.getItem('customErrorColor') || undefined,
+    primary: localStorage.getItem(customColorStorageKeys.primary) || defaults.primary,
+    secondary: localStorage.getItem(customColorStorageKeys.secondary) || defaults.secondary,
+    positive: localStorage.getItem(customColorStorageKeys.positive) || defaults.positive,
+    important: localStorage.getItem(customColorStorageKeys.important) || defaults.important,
+    error: localStorage.getItem(customColorStorageKeys.error) || defaults.error,
+    background: localStorage.getItem(customColorStorageKeys.background) || defaults.background,
+    surface: localStorage.getItem(customColorStorageKeys.surface) || defaults.surface,
   };
+};
+
+export const saveCustomColors = (colors: CustomThemeColors) => {
+  Object.entries(customColorStorageKeys).forEach(([key, storageKey]) => {
+    localStorage.setItem(storageKey, colors[key as keyof CustomThemeColors]);
+  });
 };
 
 const baseThemeOptions: ThemeOptions = {

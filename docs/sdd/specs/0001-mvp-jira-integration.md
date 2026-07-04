@@ -22,6 +22,7 @@ Provide a Jira 7.x workspace where a user can register a Jira server, inspect wo
 - User can add a Jira platform with name, base URL, username, and API token/password.
 - User can edit and delete saved platforms.
 - User can choose theme mode and custom colors.
+- User can configure local workspace layout preferences, including sidebar visibility, floating quick menu visibility, and visible Jira menu entries.
 - First-run users are routed to onboarding.
 - Credentials are persisted only on the user's local machine.
 - The app must not persist credentials on a remote server, in git, or in shared project files.

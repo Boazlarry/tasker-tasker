@@ -8,9 +8,12 @@ import {
   Typography,
   FormControl,
   FormLabel,
+  FormGroup,
   RadioGroup,
   FormControlLabel,
   Radio,
+  Switch,
+  Checkbox,
   Paper,
   Container,
   Divider,
@@ -33,13 +36,34 @@ import EditIcon from '@mui/icons-material/Edit';
 import AddIcon from '@mui/icons-material/Add';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import { useRouter } from 'next/navigation';
+import { useTheme } from '@mui/material/styles';
 import { useThemeContext } from '../../context/ThemeContext';
 import { usePlatformManager, Platform } from '../../hooks/usePlatformManager';
 import BrandMark from '../../components/BrandMark';
+import {
+  defaultWorkspacePreferences,
+  jiraMenuKeys,
+  readWorkspacePreferences,
+  saveWorkspacePreferences,
+  type JiraMenuKey,
+} from '../../lib/workspacePreferences';
+import {
+  defaultCustomThemeColors,
+  getCustomColorsWithDefaults,
+  type CustomThemeColors,
+} from '../../styles/theme';
+
+const jiraMenuLabels: Record<JiraMenuKey, string> = {
+  projects: '프로젝트',
+  team: '팀',
+  kanban: '칸반보드',
+  search: '이슈 검색',
+};
 
 export default function SettingsPage() {
   const router = useRouter();
-  const { themeMode, setThemeMode } = useThemeContext();
+  const theme = useTheme();
+  const { themeMode, setCustomColors, setThemeMode } = useThemeContext();
   const { platforms, addPlatform, updatePlatform, deletePlatform } = usePlatformManager();
 
   const [openPlatformDialog, setOpenPlatformDialog] = useState(false);
@@ -53,19 +77,54 @@ export default function SettingsPage() {
   const [apiToken, setApiToken] = useState('');
 
   // Theme customization state
-  const [customPrimary, setCustomPrimary] = useState('');
-  const [customSecondary, setCustomSecondary] = useState('');
-  const [customPositive, setCustomPositive] = useState('');
-  const [customImportant, setCustomImportant] = useState('');
-  const [customError, setCustomError] = useState('');
+  const [customPrimary, setCustomPrimary] = useState(defaultCustomThemeColors.primary);
+  const [customSecondary, setCustomSecondary] = useState(defaultCustomThemeColors.secondary);
+  const [customPositive, setCustomPositive] = useState(defaultCustomThemeColors.positive);
+  const [customImportant, setCustomImportant] = useState(defaultCustomThemeColors.important);
+  const [customError, setCustomError] = useState(defaultCustomThemeColors.error);
+  const [customBackground, setCustomBackground] = useState(defaultCustomThemeColors.background);
+  const [customSurface, setCustomSurface] = useState(defaultCustomThemeColors.surface);
+  const [showSidebar, setShowSidebar] = useState(defaultWorkspacePreferences.showSidebar);
+  const [showQuickMenu, setShowQuickMenu] = useState(defaultWorkspacePreferences.showQuickMenu);
+  const [enabledJiraMenuKeys, setEnabledJiraMenuKeys] = useState<JiraMenuKey[]>(
+    defaultWorkspacePreferences.enabledJiraMenuKeys
+  );
+  const [appearanceStatus, setAppearanceStatus] = useState('');
 
   useEffect(() => {
-    // Load custom colors from localStorage or use defaults
-    setCustomPrimary(localStorage.getItem('customPrimaryColor') || '#22665b');
-    setCustomSecondary(localStorage.getItem('customSecondaryColor') || '#4f658b');
-    setCustomPositive(localStorage.getItem('customPositiveColor') || '#2f7d52');
-    setCustomImportant(localStorage.getItem('customImportantColor') || '#b7791f');
-    setCustomError(localStorage.getItem('customErrorColor') || '#c2413d');
+    const colors = getCustomColorsWithDefaults({
+      primary: theme.palette.primary.main,
+      secondary: theme.palette.secondary.main,
+      positive: theme.palette.positive.main,
+      important: theme.palette.important.main,
+      error: theme.palette.error.main,
+      background: theme.palette.background.default,
+      surface: theme.palette.background.paper,
+    });
+
+    setCustomPrimary(colors.primary);
+    setCustomSecondary(colors.secondary);
+    setCustomPositive(colors.positive);
+    setCustomImportant(colors.important);
+    setCustomError(colors.error);
+    setCustomBackground(colors.background);
+    setCustomSurface(colors.surface);
+  }, [
+    theme.palette.background.default,
+    theme.palette.background.paper,
+    theme.palette.error.main,
+    theme.palette.important.main,
+    theme.palette.positive.main,
+    theme.palette.primary.main,
+    theme.palette.secondary.main,
+  ]);
+
+  useEffect(() => {
+    const preferences = readWorkspacePreferences();
+
+    setShowSidebar(preferences.showSidebar);
+    setShowQuickMenu(preferences.showQuickMenu);
+    setEnabledJiraMenuKeys(preferences.enabledJiraMenuKeys);
   }, []);
 
   const handleOpenAddPlatformDialog = () => {
@@ -109,12 +168,35 @@ export default function SettingsPage() {
   };
 
   const handleSaveCustomColors = () => {
-    localStorage.setItem('customPrimaryColor', customPrimary);
-    localStorage.setItem('customSecondaryColor', customSecondary);
-    localStorage.setItem('customPositiveColor', customPositive);
-    localStorage.setItem('customImportantColor', customImportant);
-    localStorage.setItem('customErrorColor', customError);
-    alert('커스텀 색상이 저장되었습니다. 앱을 새로고침하면 적용됩니다.');
+    const colors: CustomThemeColors = {
+      primary: customPrimary,
+      secondary: customSecondary,
+      positive: customPositive,
+      important: customImportant,
+      error: customError,
+      background: customBackground,
+      surface: customSurface,
+    };
+
+    setCustomColors(colors);
+    setAppearanceStatus('색상 설정을 저장했습니다.');
+  };
+
+  const handleToggleJiraMenuKey = (key: JiraMenuKey) => {
+    setEnabledJiraMenuKeys((currentKeys) =>
+      currentKeys.includes(key)
+        ? currentKeys.filter((currentKey) => currentKey !== key)
+        : [...currentKeys, key]
+    );
+  };
+
+  const handleSaveWorkspacePreferences = () => {
+    saveWorkspacePreferences({
+      showSidebar,
+      showQuickMenu,
+      enabledJiraMenuKeys,
+    });
+    setAppearanceStatus('워크스페이스 표시 설정을 저장했습니다.');
   };
 
   return (
@@ -205,56 +287,136 @@ export default function SettingsPage() {
           <Typography variant="h6" gutterBottom sx={{ mt: 3 }}>
             커스텀 색상
           </Typography>
-          <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 2 }}>
-            <Box>
-              <Typography variant="subtitle1">메인 색상 (Primary)</Typography>
-              <input
-                type="color"
-                value={customPrimary}
-                onChange={(e) => setCustomPrimary(e.target.value)}
-                style={{ width: '100%', height: '50px', border: 'none', padding: 0 }}
-              />
-            </Box>
-            <Box>
-              <Typography variant="subtitle1">보조 색상 (Secondary)</Typography>
-              <input
-                type="color"
-                value={customSecondary}
-                onChange={(e) => setCustomSecondary(e.target.value)}
-                style={{ width: '100%', height: '50px', border: 'none', padding: 0 }}
-              />
-            </Box>
-            <Box>
-              <Typography variant="subtitle1">긍정 (Positive)</Typography>
-              <input
-                type="color"
-                value={customPositive}
-                onChange={(e) => setCustomPositive(e.target.value)}
-                style={{ width: '100%', height: '50px', border: 'none', padding: 0 }}
-              />
-            </Box>
-            <Box>
-              <Typography variant="subtitle1">중요 (Important)</Typography>
-              <input
-                type="color"
-                value={customImportant}
-                onChange={(e) => setCustomImportant(e.target.value)}
-                style={{ width: '100%', height: '50px', border: 'none', padding: 0 }}
-              />
-            </Box>
-            <Box>
-              <Typography variant="subtitle1">실패 (Error)</Typography>
-              <input
-                type="color"
-                value={customError}
-                onChange={(e) => setCustomError(e.target.value)}
-                style={{ width: '100%', height: '50px', border: 'none', padding: 0 }}
-              />
-            </Box>
+          <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 2 }}>
+            {[
+              ['메인', customPrimary, setCustomPrimary],
+              ['보조', customSecondary, setCustomSecondary],
+              ['긍정', customPositive, setCustomPositive],
+              ['중요', customImportant, setCustomImportant],
+              ['실패', customError, setCustomError],
+              ['배경', customBackground, setCustomBackground],
+              ['표면', customSurface, setCustomSurface],
+            ].map(([label, value, setter]) => (
+              <Box key={label as string}>
+                <Typography variant="subtitle1">{label as string}</Typography>
+                <input
+                  type="color"
+                  aria-label={`${label as string} 색상`}
+                  value={value as string}
+                  onChange={(event) => (setter as (nextValue: string) => void)(event.target.value)}
+                  style={{ width: '100%', height: '46px', border: 'none', padding: 0, background: 'transparent' }}
+                />
+                <Typography variant="caption" color="text.secondary">
+                  {value as string}
+                </Typography>
+              </Box>
+            ))}
           </Box>
           <Button variant="contained" color="primary" onClick={handleSaveCustomColors} sx={{ mt: 3 }}>
-            커스텀 색상 저장
+            색상 적용
           </Button>
+        </Box>
+
+        <Divider sx={{ my: 3 }} />
+
+        <Box component="section">
+          <Stack direction={{ xs: 'column', md: 'row' }} spacing={3} alignItems="stretch">
+            <Box sx={{ flex: '1 1 420px' }}>
+              <Typography variant="h5" component="h2" gutterBottom>
+                워크스페이스 편집
+              </Typography>
+              <Typography color="text.secondary" sx={{ mb: 2 }}>
+                사이드바, 플로팅 메뉴, Jira 메뉴 노출을 로컬 설정으로 저장합니다.
+              </Typography>
+              <FormGroup>
+                <FormControlLabel
+                  control={<Switch checked={showSidebar} onChange={(event) => setShowSidebar(event.target.checked)} />}
+                  label="데스크톱 사이드바 표시"
+                />
+                <FormControlLabel
+                  control={<Switch checked={showQuickMenu} onChange={(event) => setShowQuickMenu(event.target.checked)} />}
+                  label="하단 플로팅 빠른 메뉴 표시"
+                />
+              </FormGroup>
+
+              <FormControl component="fieldset" sx={{ mt: 2 }}>
+                <FormLabel component="legend">Jira 메뉴 노출</FormLabel>
+                <FormGroup row>
+                  {jiraMenuKeys.map((key) => (
+                    <FormControlLabel
+                      key={key}
+                      control={
+                        <Checkbox
+                          checked={enabledJiraMenuKeys.includes(key)}
+                          onChange={() => handleToggleJiraMenuKey(key)}
+                        />
+                      }
+                      label={jiraMenuLabels[key]}
+                    />
+                  ))}
+                </FormGroup>
+              </FormControl>
+
+              <Stack direction="row" spacing={1} sx={{ mt: 3 }}>
+                <Button variant="contained" onClick={handleSaveWorkspacePreferences}>
+                  레이아웃 저장
+                </Button>
+                <Button
+                  variant="outlined"
+                  onClick={() => {
+                    setShowSidebar(defaultWorkspacePreferences.showSidebar);
+                    setShowQuickMenu(defaultWorkspacePreferences.showQuickMenu);
+                    setEnabledJiraMenuKeys(defaultWorkspacePreferences.enabledJiraMenuKeys);
+                    saveWorkspacePreferences(defaultWorkspacePreferences);
+                    setAppearanceStatus('기본 표시 설정으로 되돌렸습니다.');
+                  }}
+                >
+                  기본값
+                </Button>
+              </Stack>
+              {appearanceStatus && (
+                <Typography role="status" color="text.secondary" sx={{ mt: 1.5 }}>
+                  {appearanceStatus}
+                </Typography>
+              )}
+            </Box>
+
+            <Box
+              aria-label="workspace layout preview"
+              sx={{
+                flex: '1 1 360px',
+                minHeight: 260,
+                border: '1px solid',
+                borderColor: 'divider',
+                borderRadius: 1,
+                overflow: 'hidden',
+                bgcolor: customBackground,
+                position: 'relative',
+              }}
+            >
+              <Box sx={{ height: 42, bgcolor: customSurface, borderBottom: '1px solid', borderColor: 'divider', px: 1.5, display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Box sx={{ width: 18, height: 18, borderRadius: '50%', bgcolor: customPrimary }} />
+                <Typography variant="caption" color="text.secondary">Preview</Typography>
+              </Box>
+              <Box sx={{ display: 'flex', height: 218 }}>
+                {showSidebar && (
+                  <Box sx={{ width: 96, bgcolor: customSurface, borderRight: '1px solid', borderColor: 'divider', p: 1 }}>
+                    {jiraMenuKeys.filter((key) => enabledJiraMenuKeys.includes(key)).map((key) => (
+                      <Box key={key} sx={{ height: 18, borderRadius: 0.75, bgcolor: key === 'projects' ? customPrimary : 'action.hover', mb: 1 }} />
+                    ))}
+                  </Box>
+                )}
+                <Box sx={{ flex: 1, p: 1.5 }}>
+                  <Box sx={{ height: 34, borderRadius: 1, bgcolor: customSurface, mb: 1.5 }} />
+                  <Box sx={{ height: 72, borderRadius: 1, bgcolor: customSurface, mb: 1.5 }} />
+                  <Box sx={{ height: 72, borderRadius: 1, bgcolor: customSurface }} />
+                </Box>
+              </Box>
+              {showQuickMenu && enabledJiraMenuKeys.length > 0 && (
+                <Box sx={{ position: 'absolute', left: '50%', bottom: 12, transform: 'translateX(-50%)', width: 42, height: 42, borderRadius: '50%', bgcolor: customPrimary, boxShadow: '0 12px 28px rgba(0,0,0,0.24)' }} />
+              )}
+            </Box>
+          </Stack>
         </Box>
         </Paper>
       </Container>

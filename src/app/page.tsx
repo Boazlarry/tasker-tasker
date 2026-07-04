@@ -37,6 +37,12 @@ import IssueDetailView from '../components/IssueDetailView';
 import JiraTeamView from '../components/JiraTeamView';
 import JiraKanbanView from '../components/JiraKanbanView';
 import JiraIssueSearchView from '../components/JiraIssueSearchView';
+import {
+  readWorkspacePreferences,
+  workspacePreferencesChangedEvent,
+  type JiraMenuKey,
+  type WorkspacePreferences,
+} from '../lib/workspacePreferences';
 
 const sidebarWidth = 272;
 
@@ -56,7 +62,7 @@ interface WorkspaceHistoryState {
 
 const jiraNavItems: Array<{
   type: ContentTab['type'];
-  key: string;
+  key: JiraMenuKey;
   label: string;
   description: string;
   icon: React.ReactNode;
@@ -111,6 +117,9 @@ export default function HomePage() {
   const [activeContentTabId, setActiveContentTabId] = useState<string | null>(null);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [quickMenuOpen, setQuickMenuOpen] = useState(false);
+  const [workspacePreferences, setWorkspacePreferences] = useState<WorkspacePreferences>(() =>
+    readWorkspacePreferences()
+  );
   const historyReadyRef = useRef(false);
   const restoringHistoryRef = useRef(false);
   const lastHistoryStateRef = useRef<string | null>(null);
@@ -124,6 +133,20 @@ export default function HomePage() {
       }
     }
   }, [platformsLoading, platforms, router, selectedPlatformId]);
+
+  useEffect(() => {
+    const handlePreferencesChanged = () => {
+      setWorkspacePreferences(readWorkspacePreferences());
+    };
+
+    window.addEventListener('storage', handlePreferencesChanged);
+    window.addEventListener(workspacePreferencesChangedEvent, handlePreferencesChanged);
+
+    return () => {
+      window.removeEventListener('storage', handlePreferencesChanged);
+      window.removeEventListener(workspacePreferencesChangedEvent, handlePreferencesChanged);
+    };
+  }, []);
 
   useEffect(() => {
     if (platformsLoading || platforms.length === 0 || !selectedPlatformId) {
@@ -256,6 +279,21 @@ export default function HomePage() {
 
   const currentPlatform = platforms.find((platform) => platform.id === selectedPlatformId) || platforms[0];
   const activeTab = contentTabs.find((tab) => tab.id === activeContentTabId);
+  const visibleJiraNavItems = jiraNavItems.filter((item) =>
+    workspacePreferences.enabledJiraMenuKeys.includes(item.key)
+  );
+  const quickMenuExpandedHeight = 88 + visibleJiraNavItems.length * 52;
+  const visibleJiraMenuLabel = visibleJiraNavItems.map((item) => item.label).join(', ');
+  const emptyStateDescription =
+    visibleJiraNavItems.length > 0
+      ? `${
+          workspacePreferences.showSidebar
+            ? '왼쪽 내비게이션이나 아래 버튼으로'
+            : workspacePreferences.showQuickMenu
+              ? '아래 버튼이나 하단 빠른 메뉴로'
+              : '아래 버튼으로'
+        } ${visibleJiraMenuLabel} 뷰를 열 수 있습니다. 각 뷰는 탭으로 유지됩니다.`
+      : '설정에서 Jira 메뉴 노출을 다시 켜면 작업 뷰를 열 수 있습니다.';
 
   return (
     <Box
@@ -336,7 +374,7 @@ export default function HomePage() {
             p: 2,
             borderRight: `1px solid ${theme.palette.divider}`,
             bgcolor: 'background.paper',
-            display: { xs: 'none', md: 'flex' },
+            display: { xs: 'none', md: workspacePreferences.showSidebar ? 'flex' : 'none' },
             flexDirection: 'column',
             gap: 2,
             minHeight: 0,
@@ -355,9 +393,9 @@ export default function HomePage() {
             </Typography>
           </Box>
           <Divider />
-          {currentPlatform.type === 'jira' && (
+          {currentPlatform.type === 'jira' && visibleJiraNavItems.length > 0 && (
             <List disablePadding sx={{ display: 'flex', flexDirection: 'column', gap: 0.75 }}>
-              {jiraNavItems.map((item) => {
+              {visibleJiraNavItems.map((item) => {
                 const selected = activeTab?.platformId === currentPlatform.id && activeTab.type === item.type;
 
                 return (
@@ -512,10 +550,10 @@ export default function HomePage() {
               >
                 <Typography variant="h4">작업할 뷰를 선택하세요</Typography>
                 <Typography color="text.secondary" sx={{ mt: 1.5, maxWidth: 620 }}>
-                  왼쪽 내비게이션에서 프로젝트, 팀, 칸반보드, 이슈 검색을 열 수 있습니다. 각 뷰는 탭으로 유지됩니다.
+                  {emptyStateDescription}
                 </Typography>
                 <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 3 }}>
-                  {jiraNavItems.map((item) => (
+                  {visibleJiraNavItems.map((item) => (
                     <Button
                       key={item.key}
                       variant="outlined"
@@ -557,7 +595,7 @@ export default function HomePage() {
         </Box>
       </Box>
 
-      {currentPlatform.type === 'jira' && (
+      {currentPlatform.type === 'jira' && workspacePreferences.showQuickMenu && visibleJiraNavItems.length > 0 && (
         <Box
           component="nav"
           aria-label="빠른 보기 이동"
@@ -580,7 +618,7 @@ export default function HomePage() {
             justifyContent: 'center',
             transition: 'height 180ms ease',
             '&:hover, &:focus-within, &[data-open="true"]': {
-              height: 296,
+              height: quickMenuExpandedHeight,
             },
             '&:hover .quick-action, &:focus-within .quick-action, &[data-open="true"] .quick-action': {
               opacity: 1,
@@ -590,7 +628,7 @@ export default function HomePage() {
           }}
         >
           <Box sx={{ position: 'relative', width: 72, height: '100%', pointerEvents: 'auto' }}>
-            {jiraNavItems.map((item, index) => {
+            {visibleJiraNavItems.map((item, index) => {
               const selected = activeTab?.platformId === currentPlatform.id && activeTab.type === item.type;
 
               return (

@@ -3,12 +3,20 @@
 import React, { createContext, useContext, useState, useMemo, useEffect } from 'react';
 import { ThemeProvider as MuiThemeProvider, createTheme, responsiveFontSizes } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
-import { lightThemeOptions, darkThemeOptions, getCustomColors } from '../styles/theme';
+import {
+  lightThemeOptions,
+  darkThemeOptions,
+  getCustomColors,
+  saveCustomColors,
+  type CustomThemeColors,
+} from '../styles/theme';
 
 type ThemeMode = 'light' | 'dark' | 'system';
 
 interface ThemeContextType {
   themeMode: ThemeMode;
+  customColors: Partial<CustomThemeColors>;
+  setCustomColors: (colors: CustomThemeColors) => void;
   setThemeMode: (mode: ThemeMode) => void;
 }
 
@@ -24,6 +32,7 @@ export const useThemeContext = () => {
 
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [themeMode, setThemeMode] = useState<ThemeMode>('system');
+  const [customColors, setCustomColorsState] = useState<Partial<CustomThemeColors>>({});
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -31,21 +40,25 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     if (savedTheme) {
       setThemeMode(savedTheme);
     }
+    setCustomColorsState(getCustomColors());
     setMounted(true);
   }, []);
 
   const activeTheme = useMemo(() => {
-    const customColors = mounted ? getCustomColors() : {};
-
     const currentLightThemeOptions = {
       ...lightThemeOptions,
       palette: {
         ...lightThemeOptions.palette,
-        primary: { main: customColors.primary || (lightThemeOptions.palette?.primary as any)?.main },
-        secondary: { main: customColors.secondary || (lightThemeOptions.palette?.secondary as any)?.main },
-        positive: { main: customColors.positive || (lightThemeOptions.palette?.positive as any)?.main },
-        important: { main: customColors.important || (lightThemeOptions.palette?.important as any)?.main },
-        error: { main: customColors.error || (lightThemeOptions.palette?.error as any)?.main },
+        primary: { ...(lightThemeOptions.palette?.primary as any), ...(customColors.primary ? { main: customColors.primary } : {}) },
+        secondary: { ...(lightThemeOptions.palette?.secondary as any), ...(customColors.secondary ? { main: customColors.secondary } : {}) },
+        positive: { ...(lightThemeOptions.palette?.positive as any), ...(customColors.positive ? { main: customColors.positive } : {}) },
+        important: { ...(lightThemeOptions.palette?.important as any), ...(customColors.important ? { main: customColors.important } : {}) },
+        error: { ...(lightThemeOptions.palette?.error as any), ...(customColors.error ? { main: customColors.error } : {}) },
+        background: {
+          ...(lightThemeOptions.palette?.background as any),
+          ...(customColors.background ? { default: customColors.background } : {}),
+          ...(customColors.surface ? { paper: customColors.surface } : {}),
+        },
       },
     };
 
@@ -53,11 +66,16 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       ...darkThemeOptions,
       palette: {
         ...darkThemeOptions.palette,
-        primary: { main: customColors.primary || (darkThemeOptions.palette?.primary as any)?.main },
-        secondary: { main: customColors.secondary || (darkThemeOptions.palette?.secondary as any)?.main },
-        positive: { main: customColors.positive || (darkThemeOptions.palette?.positive as any)?.main },
-        important: { main: customColors.important || (darkThemeOptions.palette?.important as any)?.main },
-        error: { main: customColors.error || (darkThemeOptions.palette?.error as any)?.main },
+        primary: { ...(darkThemeOptions.palette?.primary as any), ...(customColors.primary ? { main: customColors.primary } : {}) },
+        secondary: { ...(darkThemeOptions.palette?.secondary as any), ...(customColors.secondary ? { main: customColors.secondary } : {}) },
+        positive: { ...(darkThemeOptions.palette?.positive as any), ...(customColors.positive ? { main: customColors.positive } : {}) },
+        important: { ...(darkThemeOptions.palette?.important as any), ...(customColors.important ? { main: customColors.important } : {}) },
+        error: { ...(darkThemeOptions.palette?.error as any), ...(customColors.error ? { main: customColors.error } : {}) },
+        background: {
+          ...(darkThemeOptions.palette?.background as any),
+          ...(customColors.background ? { default: customColors.background } : {}),
+          ...(customColors.surface ? { paper: customColors.surface } : {}),
+        },
       },
     };
 
@@ -71,15 +89,20 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       themeToApply = themeMode === 'light' ? currentLightThemeOptions : currentDarkThemeOptions;
     }
     return responsiveFontSizes(createTheme(themeToApply));
-  }, [mounted, themeMode]);
+  }, [customColors, mounted, themeMode]);
 
   const contextValue = useMemo(() => ({
+    customColors,
     themeMode,
+    setCustomColors: (colors: CustomThemeColors) => {
+      saveCustomColors(colors);
+      setCustomColorsState(colors);
+    },
     setThemeMode: (mode: ThemeMode) => {
       localStorage.setItem('themeMode', mode);
       setThemeMode(mode);
     },
-  }), [themeMode]);
+  }), [customColors, themeMode]);
 
   return (
     <ThemeContext.Provider value={contextValue}>
