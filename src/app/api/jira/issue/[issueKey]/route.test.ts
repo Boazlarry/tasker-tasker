@@ -35,7 +35,7 @@ describe('GET /api/jira/issue/[issueKey]', () => {
     const response = await GET(
       request({
         Authorization: 'Basic abc',
-        'X-Jira-Url': 'https://jira.example.com',
+        'X-Jira-Url': 'https://jira.example.com/',
       }),
       { params: Promise.resolve({ issueKey: 'TASK-1' }) }
     );
@@ -43,12 +43,13 @@ describe('GET /api/jira/issue/[issueKey]', () => {
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual(issue);
     expect(mockedAxios.get).toHaveBeenCalledWith(
-      'https://jira.example.com/rest/api/2/issue/TASK-1?expand=renderedFields,changelog',
+      'https://jira.example.com/rest/api/2/issue/TASK-1',
       {
         headers: {
           Authorization: 'Basic abc',
           'Content-Type': 'application/json',
         },
+        params: { expand: 'renderedFields,changelog' },
       }
     );
   });

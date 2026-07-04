@@ -35,7 +35,7 @@ describe('GET /api/jira/projects', () => {
     const response = await GET(
       request({
         Authorization: 'Basic abc',
-        'X-Jira-Url': 'https://jira.example.com',
+        'X-Jira-Url': 'https://jira.example.com/',
       })
     );
 

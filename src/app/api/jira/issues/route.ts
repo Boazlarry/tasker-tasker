@@ -1,6 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import axios from 'axios';
-import { createMockIssue, getMockIssues, isMockJiraUrl } from '@/lib/mockJira';
+import { createMockIssue, getMockIssues } from '@/lib/mockJira';
+import {
+  getJiraRequestContext,
+  jiraApiUrl,
+  jiraErrorData,
+  jiraErrorStatus,
+  logJiraProxyError,
+} from '@/lib/jiraProxy';
 
 const DEFAULT_MAX_RESULTS = 25;
 const MAX_ALLOWED_RESULTS = 100;
@@ -29,17 +36,16 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const authHeader = request.headers.get('Authorization');
-  const jiraUrl = request.headers.get('X-Jira-Url');
+  const jira = getJiraRequestContext(request);
 
-  if (!authHeader || !jiraUrl) {
+  if (!jira) {
     return NextResponse.json(
       { error: 'Jira URL과 인증 정보가 필요합니다.' },
       { status: 401 }
     );
   }
 
-  if (isMockJiraUrl(jiraUrl)) {
+  if (jira.isMock) {
     const allIssues = getMockIssues(projectKey, query);
     const issues = allIssues.slice(startAt, startAt + maxResults);
 
@@ -54,11 +60,8 @@ export async function GET(request: NextRequest) {
   const jql = buildJql({ projectKey, query, explicitJql });
 
   try {
-    const response = await axios.get(`${normalizeJiraUrl(jiraUrl)}/rest/api/2/search`, {
-      headers: {
-        Authorization: authHeader,
-        'Content-Type': 'application/json',
-      },
+    const response = await axios.get(jiraApiUrl(jira.jiraUrl, '/rest/api/2/search'), {
+      headers: jira.headers,
       params: {
         jql,
         startAt,
@@ -69,19 +72,18 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(response.data);
   } catch (error: any) {
-    console.error('Jira API Error:', error.response?.status, error.response?.data);
+    logJiraProxyError('Jira issue search failed', error);
     return NextResponse.json(
       { error: 'Jira 서버에서 데이터를 가져오는 데 실패했습니다.' },
-      { status: error.response?.status || 500 }
+      { status: jiraErrorStatus(error) }
     );
   }
 }
 
 export async function POST(request: NextRequest) {
-  const authHeader = request.headers.get('Authorization');
-  const jiraUrl = request.headers.get('X-Jira-Url');
+  const jira = getJiraRequestContext(request);
 
-  if (!authHeader || !jiraUrl) {
+  if (!jira) {
     return NextResponse.json(
       { error: 'Jira URL과 인증 정보가 필요합니다.' },
       { status: 401 }
@@ -98,7 +100,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  if (isMockJiraUrl(jiraUrl)) {
+  if (jira.isMock) {
     return NextResponse.json(
       createMockIssue({ projectKey, summary, description, issueType }),
       { status: 201 }
@@ -107,7 +109,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const response = await axios.post(
-      `${jiraUrl}/rest/api/2/issue`,
+      jiraApiUrl(jira.jiraUrl, '/rest/api/2/issue'),
       {
         fields: {
           project: { key: projectKey },
@@ -117,22 +119,19 @@ export async function POST(request: NextRequest) {
         },
       },
       {
-        headers: {
-          Authorization: authHeader,
-          'Content-Type': 'application/json',
-        },
+        headers: jira.headers,
       }
     );
 
     return NextResponse.json(response.data, { status: 201 });
   } catch (error: any) {
-    console.error('Jira API Error:', error.response?.data || error);
+    logJiraProxyError('Jira issue creation failed', error);
     return NextResponse.json(
       {
         error: 'Jira 이슈 생성에 실패했습니다.',
-        details: error.response?.data,
+        details: jiraErrorData(error),
       },
-      { status: error.response?.status || 500 }
+      { status: jiraErrorStatus(error) }
     );
   }
 }
@@ -181,10 +180,6 @@ function normalizeFields(fields: string | null) {
     .map((field) => field.trim())
     .filter(Boolean)
     .join(',');
-}
-
-function normalizeJiraUrl(jiraUrl: string) {
-  return jiraUrl.replace(/\/+$/, '');
 }
 
 function escapeJqlString(value: string) {

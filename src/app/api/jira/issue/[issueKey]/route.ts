@@ -1,23 +1,31 @@
 import { NextRequest, NextResponse } from 'next/server';
 import axios from 'axios';
-import { getMockIssue, isMockJiraUrl, updateMockIssue } from '@/lib/mockJira';
+import { getMockIssue, updateMockIssue } from '@/lib/mockJira';
+import {
+  getJiraRequestContext,
+  jiraApiUrl,
+  jiraErrorData,
+  jiraErrorStatus,
+  logJiraProxyError,
+} from '@/lib/jiraProxy';
+
+const ISSUE_EXPAND = 'renderedFields,changelog';
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ issueKey: string }> }
 ) {
   const { issueKey } = await params;
-  const jiraUrl = request.headers.get('X-Jira-Url');
-  const authorization = request.headers.get('Authorization');
+  const jira = getJiraRequestContext(request);
 
-  if (!jiraUrl || !authorization) {
+  if (!jira) {
     return NextResponse.json(
       { error: 'Jira URL or Authorization header is missing' },
       { status: 400 }
     );
   }
 
-  if (isMockJiraUrl(jiraUrl)) {
+  if (jira.isMock) {
     const issue = getMockIssue(issueKey);
 
     if (!issue) {
@@ -31,21 +39,16 @@ export async function GET(
   }
 
   try {
-    const response = await axios.get(
-      `${jiraUrl}/rest/api/2/issue/${issueKey}?expand=renderedFields,changelog`,
-      {
-        headers: {
-          Authorization: authorization,
-          'Content-Type': 'application/json',
-        },
-      }
-    );
+    const response = await axios.get(jiraApiUrl(jira.jiraUrl, `/rest/api/2/issue/${encodeURIComponent(issueKey)}`), {
+      headers: jira.headers,
+      params: { expand: ISSUE_EXPAND },
+    });
     return NextResponse.json(response.data);
   } catch (error: any) {
-    console.error(`Error fetching issue ${issueKey}:`, error.response?.data);
+    logJiraProxyError(`Jira issue fetch failed: ${issueKey}`, error);
     return NextResponse.json(
       { error: `Failed to fetch issue ${issueKey}` },
-      { status: error.response?.status || 500 }
+      { status: jiraErrorStatus(error) }
     );
   }
 }
@@ -55,10 +58,9 @@ export async function PUT(
   { params }: { params: Promise<{ issueKey: string }> }
 ) {
   const { issueKey } = await params;
-  const jiraUrl = request.headers.get('X-Jira-Url');
-  const authorization = request.headers.get('Authorization');
+  const jira = getJiraRequestContext(request);
 
-  if (!jiraUrl || !authorization) {
+  if (!jira) {
     return NextResponse.json(
       { error: 'Jira URL or Authorization header is missing' },
       { status: 400 }
@@ -75,13 +77,13 @@ export async function PUT(
     );
   }
 
-  if (isMockJiraUrl(jiraUrl)) {
+  if (jira.isMock) {
     return NextResponse.json(updateMockIssue(issueKey, { summary, description }));
   }
 
   try {
     await axios.put(
-      `${jiraUrl}/rest/api/2/issue/${issueKey}`,
+      jiraApiUrl(jira.jiraUrl, `/rest/api/2/issue/${encodeURIComponent(issueKey)}`),
       {
         fields: {
           ...(summary ? { summary } : {}),
@@ -89,32 +91,24 @@ export async function PUT(
         },
       },
       {
-        headers: {
-          Authorization: authorization,
-          'Content-Type': 'application/json',
-        },
+        headers: jira.headers,
       }
     );
 
-    const response = await axios.get(
-      `${jiraUrl}/rest/api/2/issue/${issueKey}?expand=renderedFields,changelog`,
-      {
-        headers: {
-          Authorization: authorization,
-          'Content-Type': 'application/json',
-        },
-      }
-    );
+    const response = await axios.get(jiraApiUrl(jira.jiraUrl, `/rest/api/2/issue/${encodeURIComponent(issueKey)}`), {
+      headers: jira.headers,
+      params: { expand: ISSUE_EXPAND },
+    });
 
     return NextResponse.json(response.data);
   } catch (error: any) {
-    console.error(`Error updating issue ${issueKey}:`, error.response?.data || error);
+    logJiraProxyError(`Jira issue update failed: ${issueKey}`, error);
     return NextResponse.json(
       {
         error: `Failed to update issue ${issueKey}`,
-        details: error.response?.data,
+        details: jiraErrorData(error),
       },
-      { status: error.response?.status || 500 }
+      { status: jiraErrorStatus(error) }
     );
   }
 }
