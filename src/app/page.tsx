@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Box,
@@ -15,6 +15,7 @@ import {
   ListItemIcon,
   ListItemText,
   IconButton,
+  Fab,
   Paper,
   Chip,
   Divider,
@@ -28,6 +29,7 @@ import GroupsOutlinedIcon from '@mui/icons-material/GroupsOutlined';
 import ViewKanbanOutlinedIcon from '@mui/icons-material/ViewKanbanOutlined';
 import SearchOutlinedIcon from '@mui/icons-material/SearchOutlined';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import AppsIcon from '@mui/icons-material/Apps';
 import BrandMark from '../components/BrandMark';
 import { usePlatformManager, Platform } from '../hooks/usePlatformManager';
 import JiraPlatformView from '../components/JiraPlatformView';
@@ -44,6 +46,12 @@ interface ContentTab {
   title: string;
   platformId: string;
   data?: { key?: string };
+}
+
+interface WorkspaceHistoryState {
+  taskerTaskerWorkspace: true;
+  activeContentTabId: string | null;
+  selectedPlatformId: string | null;
 }
 
 const jiraNavItems: Array<{
@@ -102,6 +110,10 @@ export default function HomePage() {
   const [contentTabs, setContentTabs] = useState<ContentTab[]>([]);
   const [activeContentTabId, setActiveContentTabId] = useState<string | null>(null);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const [quickMenuOpen, setQuickMenuOpen] = useState(false);
+  const historyReadyRef = useRef(false);
+  const restoringHistoryRef = useRef(false);
+  const lastHistoryStateRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (!platformsLoading) {
@@ -112,6 +124,65 @@ export default function HomePage() {
       }
     }
   }, [platformsLoading, platforms, router, selectedPlatformId]);
+
+  useEffect(() => {
+    if (platformsLoading || platforms.length === 0 || !selectedPlatformId) {
+      return;
+    }
+
+    const historyState: WorkspaceHistoryState = {
+      taskerTaskerWorkspace: true,
+      activeContentTabId,
+      selectedPlatformId,
+    };
+    const serializedState = JSON.stringify(historyState);
+
+    if (!historyReadyRef.current) {
+      window.history.replaceState(historyState, '', window.location.href);
+      historyReadyRef.current = true;
+      lastHistoryStateRef.current = serializedState;
+      return;
+    }
+
+    if (restoringHistoryRef.current) {
+      restoringHistoryRef.current = false;
+      lastHistoryStateRef.current = serializedState;
+      return;
+    }
+
+    if (lastHistoryStateRef.current !== serializedState) {
+      window.history.pushState(historyState, '', window.location.href);
+      lastHistoryStateRef.current = serializedState;
+    }
+  }, [activeContentTabId, platforms.length, platformsLoading, selectedPlatformId]);
+
+  useEffect(() => {
+    const handlePopState = (event: PopStateEvent) => {
+      const state = event.state as Partial<WorkspaceHistoryState> | null;
+
+      if (!state?.taskerTaskerWorkspace) {
+        return;
+      }
+
+      const nextPlatformId =
+        state.selectedPlatformId && platforms.some((platform) => platform.id === state.selectedPlatformId)
+          ? state.selectedPlatformId
+          : platforms[0]?.id || null;
+      const nextActiveContentTabId =
+        state.activeContentTabId &&
+        contentTabs.some((tab) => tab.id === state.activeContentTabId && tab.platformId === nextPlatformId)
+          ? state.activeContentTabId
+          : null;
+
+      restoringHistoryRef.current = true;
+      setSelectedPlatformId(nextPlatformId);
+      setActiveContentTabId(nextActiveContentTabId);
+    };
+
+    window.addEventListener('popstate', handlePopState);
+
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [contentTabs, platforms]);
 
   const handleOpenContentTab = useCallback((type: ContentTab['type'], key: string, platform: Platform, title: string) => {
     const newTabId = `${platform.id}-${type}-${key}`;
@@ -165,6 +236,12 @@ export default function HomePage() {
     setAnchorEl(null);
   };
 
+  const handleQuickMenuBlur = (event: React.FocusEvent<HTMLElement>) => {
+    if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+      setQuickMenuOpen(false);
+    }
+  };
+
   if (platformsLoading) {
     return (
       <Box sx={{ display: 'grid', placeItems: 'center', minHeight: '100dvh', bgcolor: 'background.default' }}>
@@ -184,11 +261,12 @@ export default function HomePage() {
     <Box
       sx={{
         minHeight: '100dvh',
+        height: '100dvh',
         bgcolor: 'background.default',
         color: 'text.primary',
         display: 'flex',
         flexDirection: 'column',
-        pb: { xs: 9, md: 10 },
+        overflow: 'hidden',
       }}
     >
       <Box
@@ -208,6 +286,7 @@ export default function HomePage() {
           position: 'sticky',
           top: 0,
           zIndex: theme.zIndex.appBar,
+          flexShrink: 0,
         }}
       >
         <Box sx={{ width: { xs: 'auto', md: sidebarWidth - 24 }, flexShrink: 0, flexGrow: { xs: 1, md: 0 } }}>
@@ -247,9 +326,10 @@ export default function HomePage() {
         </IconButton>
       </Box>
 
-      <Box sx={{ display: 'flex', minHeight: 0, flexGrow: 1 }}>
+      <Box sx={{ display: 'flex', minHeight: 0, flexGrow: 1, overflow: 'hidden' }}>
         <Box
           component="aside"
+          className="tasker-scrollbar"
           sx={{
             width: sidebarWidth,
             flexShrink: 0,
@@ -259,6 +339,8 @@ export default function HomePage() {
             display: { xs: 'none', md: 'flex' },
             flexDirection: 'column',
             gap: 2,
+            minHeight: 0,
+            overflowY: 'auto',
           }}
         >
           <Box>
@@ -404,7 +486,16 @@ export default function HomePage() {
             </Paper>
           )}
 
-          <Box sx={{ minHeight: 0, flexGrow: 1, overflow: 'auto' }}>
+          <Box
+            className="tasker-scrollbar"
+            sx={{
+              minHeight: 0,
+              flexGrow: 1,
+              overflow: 'auto',
+              pb: { xs: 9, md: 3 },
+              pr: { xs: 0, md: 0.5 },
+            }}
+          >
             {!activeContentTabId && (
               <Paper
                 variant="outlined"
@@ -470,60 +561,101 @@ export default function HomePage() {
         <Box
           component="nav"
           aria-label="빠른 보기 이동"
+          data-open={quickMenuOpen ? 'true' : undefined}
+          onMouseEnter={() => setQuickMenuOpen(true)}
+          onMouseLeave={() => setQuickMenuOpen(false)}
+          onFocus={() => setQuickMenuOpen(true)}
+          onBlur={handleQuickMenuBlur}
           sx={{
             position: 'fixed',
             left: '50%',
-            bottom: { xs: 10, md: 16 },
+            bottom: { xs: 14, md: 18 },
             transform: 'translateX(-50%)',
             zIndex: theme.zIndex.appBar + 1,
-            display: 'grid',
-            gridTemplateColumns: 'repeat(4, minmax(0, 1fr))',
-            gap: 0.5,
-            width: { xs: 'calc(100% - 24px)', sm: 480 },
-            p: 0.75,
-            border: '1px solid',
-            borderColor: 'divider',
-            borderRadius: 1,
-            bgcolor: 'rgba(16, 32, 29, 0.88)',
-            boxShadow: '0 18px 52px rgba(0, 0, 0, 0.24)',
-            backdropFilter: 'blur(14px)',
-            animation: 'tasker-rise-in 240ms ease-out',
+            width: 96,
+            height: 72,
+            pointerEvents: 'auto',
+            display: 'flex',
+            alignItems: 'flex-end',
+            justifyContent: 'center',
+            transition: 'height 180ms ease',
+            '&:hover, &:focus-within, &[data-open="true"]': {
+              height: 296,
+            },
+            '&:hover .quick-action, &:focus-within .quick-action, &[data-open="true"] .quick-action': {
+              opacity: 1,
+              pointerEvents: 'auto',
+              transform: 'translate(-50%, 0) scale(1)',
+            },
           }}
         >
-          {jiraNavItems.map((item) => {
-            const selected = activeTab?.platformId === currentPlatform.id && activeTab.type === item.type;
+          <Box sx={{ position: 'relative', width: 72, height: '100%', pointerEvents: 'auto' }}>
+            {jiraNavItems.map((item, index) => {
+              const selected = activeTab?.platformId === currentPlatform.id && activeTab.type === item.type;
 
-            return (
-              <Tooltip key={item.key} title={item.description} arrow>
-                <Button
-                  aria-pressed={selected}
-                  size="small"
-                  startIcon={item.icon}
-                  onClick={() => handleOpenContentTab(item.type, item.key, currentPlatform, `${currentPlatform.name} ${item.label}`)}
-                  sx={{
-                    minWidth: 0,
-                    px: { xs: 0.75, sm: 1.25 },
-                    color: selected ? '#10201d' : '#eef3ef',
-                    bgcolor: selected ? item.accent : 'transparent',
-                    border: '1px solid',
-                    borderColor: selected ? item.accent : 'rgba(238, 243, 239, 0.12)',
-                    animation: selected ? 'tasker-soft-pulse 1800ms ease-in-out infinite' : 'none',
-                    '& .MuiButton-startIcon': {
-                      mr: { xs: 0, sm: 0.75 },
-                    },
-                    '&:hover': {
-                      bgcolor: selected ? item.accent : 'rgba(238, 243, 239, 0.08)',
-                      borderColor: item.accent,
-                    },
-                  }}
-                >
-                  <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>
-                    {item.label}
-                  </Box>
-                </Button>
-              </Tooltip>
-            );
-          })}
+              return (
+                <Tooltip key={item.key} title={`${item.label} - ${item.description}`} placement="left" arrow>
+                  <Fab
+                    className="quick-action"
+                    size="small"
+                    aria-label={item.description}
+                    aria-pressed={selected}
+                    onClick={() => {
+                      handleOpenContentTab(item.type, item.key, currentPlatform, `${currentPlatform.name} ${item.label}`);
+                      setQuickMenuOpen(false);
+                    }}
+                    sx={{
+                      position: 'absolute',
+                      left: '50%',
+                      bottom: 78 + index * 52,
+                      width: 42,
+                      height: 42,
+                      minHeight: 42,
+                      color: selected ? '#10201d' : 'text.primary',
+                      bgcolor: selected ? item.accent : 'background.paper',
+                      border: '1px solid',
+                      borderColor: selected ? item.accent : 'divider',
+                      boxShadow: selected ? `0 12px 28px ${item.surface}` : '0 12px 28px rgba(0, 0, 0, 0.20)',
+                      opacity: 0,
+                      pointerEvents: 'none',
+                      transform: 'translate(-50%, 14px) scale(0.8)',
+                      transition:
+                        'opacity 160ms ease, transform 180ms ease, border-color 160ms ease, background-color 160ms ease',
+                      transitionDelay: `${index * 24}ms`,
+                      '&:hover': {
+                        bgcolor: selected ? item.accent : item.surface,
+                        borderColor: item.accent,
+                        transform: 'translate(-50%, -1px) scale(1.02)',
+                      },
+                    }}
+                  >
+                    {item.icon}
+                  </Fab>
+                </Tooltip>
+              );
+            })}
+            <Tooltip title="빠른 메뉴" placement="top" arrow>
+              <Fab
+                color="primary"
+                aria-label="빠른 메뉴"
+                aria-expanded={quickMenuOpen}
+                onClick={() => setQuickMenuOpen(true)}
+                sx={{
+                  position: 'absolute',
+                  left: '50%',
+                  bottom: 0,
+                  transform: 'translateX(-50%)',
+                  boxShadow: '0 18px 46px rgba(0, 0, 0, 0.32)',
+                  animation: 'tasker-rise-in 240ms ease-out',
+                  '&:hover': {
+                    transform: 'translateX(-50%) translateY(-1px)',
+                  },
+                }}
+              >
+                <AppsIcon />
+              </Fab>
+            </Tooltip>
+          </Box>
         </Box>
       )}
     </Box>
